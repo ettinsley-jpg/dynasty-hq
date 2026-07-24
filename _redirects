@@ -1,0 +1,2 @@
+# Netlify redirects — serve dynasty-hq.html at the root URL
+/   /dynasty-hq.html   200

@@ -1,0 +1,2332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dynasty HQ 🏈</title>
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#f59e0b">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Dynasty HQ">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#07100a;--bg2:#0e1a10;--bg3:#152017;--card:#192319;
+      --border:#253525;--gbright:#22c55e;--gold:#f59e0b;--gold-dk:#7a4f06;
+      --text:#dff0df;--muted:#6b8f6b;--red:#ef4444;--blue:#60a5fa;
+    }
+    body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
+
+    /* Nav */
+    .nav{background:#080f09;border-bottom:2px solid var(--gold);position:sticky;top:0;z-index:100}
+    .nav-inner{max-width:960px;margin:0 auto;display:flex;align-items:stretch;overflow-x:auto}
+    .nav-logo{padding:13px 16px;font-weight:900;font-size:17px;color:var(--gold);white-space:nowrap;letter-spacing:-.5px}
+    .nav-logo span{color:var(--gbright)}
+    .nav-tab{padding:13px 14px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--muted);white-space:nowrap;border-bottom:3px solid transparent;transition:.2s}
+    .nav-tab:hover{color:var(--text);background:var(--bg3)}
+    .nav-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+
+    /* Layout */
+    .page{max-width:960px;margin:0 auto;padding:20px 16px}
+    .page-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:12px;flex-wrap:wrap}
+    .page-title{font-size:22px;font-weight:800;margin-bottom:2px}
+    .page-sub{color:var(--muted);font-size:13px}
+
+    /* Cards */
+    .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px}
+    .card-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:8px}
+    .card-title{font-weight:700;font-size:15px}
+
+    /* Position badges */
+    .pb{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:800;letter-spacing:.05em;flex-shrink:0}
+    .pb-QB{background:#1e3a8a;color:#93c5fd}
+    .pb-RB{background:#14532d;color:#86efac}
+    .pb-WR{background:#3b0764;color:#d8b4fe}
+    .pb-TE{background:#7c2d12;color:#fdba74}
+    .pb-K{background:#292524;color:#d6d3d1}
+    .pb-DEF{background:#1e1b4b;color:#a5b4fc}
+    .pb-DL{background:#3b1f00;color:#fb923c}
+    .pb-LB{background:#0f2d2d;color:#2dd4bf}
+    .pb-DB{background:#1a1030;color:#c084fc}
+
+    /* Slot labels */
+    .sl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:2px 6px;border-radius:3px}
+    .sl-starter{background:var(--gold);color:#000}
+    .sl-backup{background:#374151;color:#9ca3af}
+    .sl-deep{background:#1f2937;color:#6b7280}
+
+    /* Player rows */
+    .pr{display:flex;align-items:center;gap:9px;padding:9px 11px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:5px;cursor:grab;user-select:none}
+    .pr.drag-over{border-color:var(--gold);background:#2a1d00}
+    .pr.dragging{opacity:.35}
+    .pr-rank{font-size:13px;font-weight:800;color:var(--muted);min-width:22px;text-align:center}
+    .pr-grip{color:var(--muted);font-size:18px;flex-shrink:0}
+    .pr-info{flex:1;min-width:0}
+    .pr-name{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pr-meta{font-size:11px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    .pr-right{display:flex;gap:5px;align-items:center;flex-shrink:0}
+    .mv{display:flex;flex-direction:column;gap:2px}
+    .mv-btn{background:var(--bg);border:1px solid var(--border);color:var(--muted);border-radius:3px;padding:1px 5px;font-size:11px;cursor:pointer;line-height:1.5}
+    .mv-btn:hover{background:var(--bg3);color:var(--text)}
+    .mv-btn:disabled{opacity:.3;cursor:default;pointer-events:none}
+
+    /* Separator */
+    .sep{border-top:1px dashed var(--border);margin:4px 0 6px;position:relative}
+    .sep-lbl{position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:var(--bg3);padding:0 8px;font-size:10px;color:var(--muted);font-weight:600;white-space:nowrap}
+
+    /* Buttons */
+    .btn{padding:7px 14px;border-radius:6px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+    .btn:disabled{opacity:.5;cursor:default}
+    .btn-gold{background:var(--gold);color:#000}
+    .btn-gold:hover:not(:disabled){background:#d97706}
+    .btn-outline{background:transparent;border:1px solid var(--border);color:var(--muted)}
+    .btn-outline:hover{border-color:var(--muted);color:var(--text)}
+    .btn-danger{background:transparent;border:1px solid #7f1d1d;color:#f87171}
+    .btn-danger:hover{background:#7f1d1d}
+    .btn-green{background:#1a5c1a;color:var(--gbright);border:1px solid var(--gbright)}
+    .btn-green:hover{background:#1c3d1c}
+    .btn-sm{padding:4px 10px;font-size:12px}
+
+    /* Assessment buttons */
+    .assess-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px dashed var(--border)}
+    .assess-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;min-width:52px}
+    .abtn{padding:3px 9px;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--muted);transition:.15s;white-space:nowrap}
+    .abtn:hover{color:var(--text);border-color:var(--muted)}
+    .abtn.as{background:#14342a;border-color:var(--gbright);color:var(--gbright)}  /* active strength */
+    .abtn.an{background:#1f2937;border-color:#4b5563;color:#9ca3af}               /* active neutral */
+    .abtn.ane{background:#3b0f0f;border-color:var(--red);color:#f87171}           /* active need */
+    .assess-sep{width:1px;height:16px;background:var(--border);flex-shrink:0;margin:0 2px}
+
+    /* Assessment tags (mini badges shown on card header) */
+    .atag{font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;border:1px solid;white-space:nowrap}
+    .atag-strength{background:#14342a;border-color:var(--gbright);color:var(--gbright)}
+    .atag-need{background:#3b0f0f;border-color:var(--red);color:#f87171}
+    .atag-neutral{background:#1f2937;border-color:#4b5563;color:#9ca3af}
+
+    /* Superflex toggle */
+    .sfx-toggle{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);transition:.15s;user-select:none}
+    .sfx-toggle:hover{border-color:var(--muted);color:var(--text)}
+    .sfx-toggle.on{border-color:var(--gold);color:var(--gold);background:#1e1800}
+    .sfx-toggle input{width:14px;height:14px;accent-color:var(--gold);cursor:pointer}
+
+    /* Forms */
+    select,input[type=text],input[type=number]{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 12px;font-size:14px;width:100%}
+    select:focus,input:focus{outline:none;border-color:var(--gold)}
+    select option{background:var(--bg3)}
+    label{font-size:13px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px}
+    .fg{margin-bottom:14px}
+    .frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+    /* Modal */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:200;padding:16px}
+    .modal{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px;width:100%;max-width:420px}
+    .modal-title{font-size:18px;font-weight:800;margin-bottom:20px}
+    .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+
+    /* Mismatch analysis rows */
+    .mm-section{margin-bottom:24px}
+    .mm-section-hd{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);margin-bottom:10px}
+    .mm-section-title{font-size:14px;font-weight:700;color:var(--text)}
+    .mm-count{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--bg3);color:var(--muted);border:1px solid var(--border)}
+    .mm-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;transition:.15s}
+    .mm-item.hot{border-color:var(--gold)}
+    .mm-item.chip-match{border-color:#3b82f6}
+    .mm-body{flex:1;min-width:0}
+    .mm-name{font-weight:600;font-size:14px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .mm-ranks{font-size:12px;color:var(--muted)}
+    .mm-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+    .mm-tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:3px;border:1px solid}
+    .mm-tag-gold{background:#1e1800;border-color:var(--gold);color:var(--gold)}
+    .mm-tag-green{background:#14342a;border-color:var(--gbright);color:var(--gbright)}
+    .mm-tag-blue{background:#1e3a5f;border-color:#3b82f6;color:#93c5fd}
+    .mm-tag-red{background:#3b0f0f;border-color:var(--red);color:#fca5a5}
+    .mm-tag-gray{background:#1f2937;border-color:#4b5563;color:#9ca3af}
+    .mm-gap{font-size:18px;font-weight:900;color:var(--gold);min-width:36px;text-align:right;flex-shrink:0;line-height:1.4}
+    .mm-gap.neutral{color:var(--muted);font-size:14px}
+    .mm-empty{color:var(--muted);font-size:13px;padding:16px 0;text-align:center}
+
+    /* Context panel */
+    .ctx-panel{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:18px}
+    .ctx-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+    .ctx-row:last-child{margin-bottom:0}
+    .ctx-label{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;min-width:68px}
+    .vgap{display:inline-block;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;background:var(--gold-dk);color:var(--gold)}
+
+    /* Alerts */
+    .alert{padding:12px 16px;border-radius:8px;font-size:13px;margin-bottom:14px;line-height:1.5}
+    .alert-info{background:#1e3a5f;border:1px solid #2563eb;color:#93c5fd}
+    .alert-success{background:#14342a;border:1px solid #16a34a;color:#86efac}
+    .alert-error{background:#3b0f0f;border:1px solid #dc2626;color:#fca5a5}
+
+    /* Spinner */
+    .spin{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:sp .8s linear infinite;vertical-align:middle;flex-shrink:0}
+    @keyframes sp{to{transform:rotate(360deg)}}
+
+    /* Empty */
+    .empty{text-align:center;padding:48px 20px;color:var(--muted)}
+    .empty-ico{font-size:44px;margin-bottom:12px}
+
+    /* Misc */
+    .divider{border-top:1px solid var(--border);margin:20px 0}
+    .tlr{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+    .tlr:last-child{border-bottom:none}
+    .badge-my{background:var(--gold-dk);color:var(--gold);font-size:10px;font-weight:800;padding:2px 7px;border-radius:4px;text-transform:uppercase;margin-left:8px}
+    .chip{display:inline-flex;align-items:center;gap:5px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:3px 10px;font-size:12px;font-weight:600;color:var(--muted)}
+
+    @media(max-width:640px){
+      .frow{grid-template-columns:1fr}
+      .nav-tab{padding:12px 9px;font-size:11px}
+      .page{padding:14px 10px}
+      .assess-row{gap:4px}
+      .abtn{padding:3px 7px;font-size:10px}
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+'use strict';
+
+// ══════════════════════════════════════════════════
+//  CONSTANTS
+// ══════════════════════════════════════════════════
+
+const POSITIONS     = ['QB','RB','WR','TE','K','DEF','DL','LB','DB'];
+const OFF_POSITIONS = ['QB','RB','WR','TE','K','DEF'];  // non-IDP
+const IDP_POSITIONS = ['DL','LB','DB'];
+
+const LEAGUES_KEY = 'dynastyHQ_leagues_v1';
+const CURRENT_LEAGUE_KEY = 'dynastyHQ_currentLeague';
+
+// Base slots — QB adjusted for superflex, IDP positions adjusted for IDP_FLEX
+const BASE_SLOTS = {
+  QB:{s:1,b:1}, RB:{s:2,b:2}, WR:{s:2,b:2},
+  TE:{s:1,b:1}, K:{s:1,b:0}, DEF:{s:1,b:0},
+  DL:{s:1,b:2}, LB:{s:1,b:2}, DB:{s:1,b:2},
+};
+
+// Sleeper position → app IDP position (DE/DT → DL, CB/S/FS/SS → DB)
+const IDP_POS_MAP = {
+  DL:'DL', DE:'DL', DT:'DL', NT:'DL', NG:'DL',
+  LB:'LB', ILB:'LB', OLB:'LB', MLB:'LB',
+  DB:'DB', CB:'DB', S:'DB', SS:'DB', FS:'DB', SAF:'DB',
+};
+
+function getPosSlots(pos) {
+  const v = BASE_SLOTS[pos] || {s:1,b:1};
+  if (pos === 'QB' && S.settings && S.settings.superflex) return {s:2, b:v.b};
+  // IDP_FLEX adds 1 extra starter slot — distributed to LB (most common IDP position)
+  if (pos === 'LB' && S.settings && S.settings.idpFlex) return {s:2, b:v.b};
+  return v;
+}
+
+function slotInfo(idx, pos) {
+  const v = getPosSlots(pos);
+  if (idx < v.s)       return {text:'Starter',    cls:'sl-starter'};
+  if (idx < v.s + v.b) return {text:'Backup',     cls:'sl-backup'};
+  return                      {text:'Deep Bench',  cls:'sl-deep'};
+}
+
+// ══════════════════════════════════════════════════
+//  SAMPLE DATA
+// ══════════════════════════════════════════════════
+
+const SAMPLE_TEAMS = [
+  {id:'myteam', name:'My Team', isMyTeam:true, players:[
+    {id:'p1', name:'Josh Allen',         pos:'QB',  age:28, rank:3},
+    {id:'p2', name:'Jared Goff',          pos:'QB',  age:32, rank:18},
+    {id:'p3', name:'Saquon Barkley',      pos:'RB',  age:27, rank:8},
+    {id:'p4', name:'Josh Jacobs',         pos:'RB',  age:26, rank:30},
+    {id:'p5', name:'Dameon Pierce',       pos:'RB',  age:25, rank:58},
+    {id:'p6', name:'Tyreek Hill',         pos:'WR',  age:30, rank:12},
+    {id:'p7', name:'Stefon Diggs',        pos:'WR',  age:31, rank:40},
+    {id:'p8', name:'Jaylen Waddle',       pos:'WR',  age:26, rank:22},
+    {id:'p9', name:'Tee Higgins',         pos:'WR',  age:25, rank:19},
+    {id:'p10',name:'Travis Kelce',        pos:'TE',  age:35, rank:5},
+    {id:'p11',name:'Dalton Schultz',      pos:'TE',  age:28, rank:55},
+    {id:'p12',name:'Justin Tucker',       pos:'K',   age:34, rank:1},
+    {id:'p13',name:'San Francisco 49ers', pos:'DEF', age:0,  rank:2},
+  ]},
+  {id:'team2', name:'Gridiron Kings', isMyTeam:false, players:[
+    {id:'p14',name:'Lamar Jackson',       pos:'QB',  age:27, rank:4},
+    {id:'p15',name:'Geno Smith',           pos:'QB',  age:33, rank:22},
+    {id:'p16',name:'Christian McCaffrey', pos:'RB',  age:28, rank:2},
+    {id:'p17',name:'Tony Pollard',        pos:'RB',  age:27, rank:20},
+    {id:'p18',name:"D'Andre Swift",       pos:'RB',  age:26, rank:35},
+    {id:'p19',name:'Justin Jefferson',    pos:'WR',  age:25, rank:6},
+    {id:'p20',name:'Davante Adams',       pos:'WR',  age:31, rank:38},
+    {id:'p21',name:'Rashee Rice',         pos:'WR',  age:24, rank:15},
+    {id:'p22',name:'Sam LaPorta',         pos:'TE',  age:23, rank:14},
+    {id:'p23',name:'Tyler Higbee',        pos:'TE',  age:31, rank:60},
+    {id:'p24',name:'Jake Elliott',        pos:'K',   age:29, rank:5},
+    {id:'p25',name:'Dallas Cowboys',      pos:'DEF', age:0,  rank:8},
+  ]},
+  {id:'team3', name:'End Zone Elite', isMyTeam:false, players:[
+    {id:'p26',name:'Patrick Mahomes',     pos:'QB',  age:29, rank:1},
+    {id:'p27',name:'Jordan Love',         pos:'QB',  age:26, rank:9},
+    {id:'p28',name:'Breece Hall',         pos:'RB',  age:24, rank:7},
+    {id:'p29',name:'Rachaad White',       pos:'RB',  age:25, rank:40},
+    {id:'p30',name:'Zack Moss',           pos:'RB',  age:26, rank:52},
+    {id:'p31',name:'CeeDee Lamb',         pos:'WR',  age:26, rank:4},
+    {id:'p32',name:'Deebo Samuel',        pos:'WR',  age:28, rank:45},
+    {id:'p33',name:'Puka Nacua',          pos:'WR',  age:23, rank:25},
+    {id:'p34',name:'Dalton Kincaid',      pos:'TE',  age:25, rank:18},
+    {id:'p35',name:'Cole Kmet',           pos:'TE',  age:25, rank:32},
+    {id:'p36',name:'Evan McPherson',      pos:'K',   age:24, rank:3},
+    {id:'p37',name:'Kansas City Chiefs',  pos:'DEF', age:0,  rank:3},
+  ]},
+];
+
+// ══════════════════════════════════════════════════
+//  STATE — split into LOCAL (private) + FB (shared live)
+// ══════════════════════════════════════════════════
+
+// ── League helpers ─────────────────────────────────
+function emptyLeagueState() {
+  return {
+    gmRankings:{}, gmAssessments:{},
+    settings:{superflex:false, idp:false, idpFlex:false},
+    teams: JSON.parse(JSON.stringify(SAMPLE_TEAMS)),
+    myRankings:{}, myAssessment:{},
+  };
+}
+
+function loadLeagues() {
+  try {
+    const raw = localStorage.getItem(LEAGUES_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+
+  // Migration: convert old single-league data if it exists
+  const oldData = (() => { try { const x = localStorage.getItem('dynastyHQ_v5'); return x ? JSON.parse(x) : null; } catch(e){ return null; } })();
+  const oldFbUrl = localStorage.getItem('dynastyHQ_fbUrl') || null;
+  const oldTeamId = localStorage.getItem('dynastyHQ_myTeam') || null;
+  const base = emptyLeagueState();
+  const league = {
+    id: 'league_' + Date.now(),
+    name: 'My League',
+    fbUrl: oldFbUrl,
+    myTeamId: oldTeamId,
+    ...(oldData ? {
+      gmRankings:    oldData.gmRankings    || base.gmRankings,
+      gmAssessments: oldData.gmAssessments || base.gmAssessments,
+      settings:      oldData.settings      || base.settings,
+      teams:         oldData.teams         || base.teams,
+      myRankings:    oldData.myRankings    || base.myRankings,
+      myAssessment:  oldData.myAssessment  || base.myAssessment,
+    } : base),
+  };
+  return [league];
+}
+
+function saveLeagues() {
+  try {
+    // Flush current working state back into LEAGUES before writing
+    const idx = LEAGUES.findIndex(l => l.id === CURRENT_LEAGUE_ID);
+    if (idx >= 0) {
+      LEAGUES[idx] = { ...LEAGUES[idx], ...S, fbUrl: FB_URL, myTeamId: MY_TEAM_ID };
+    }
+    localStorage.setItem(LEAGUES_KEY, JSON.stringify(LEAGUES));
+    localStorage.setItem(CURRENT_LEAGUE_KEY, CURRENT_LEAGUE_ID);
+  } catch(e) {}
+}
+
+function saveLocal() { saveLeagues(); }
+
+function addLeague(name) {
+  saveLeagues(); // flush current first
+  const id = 'league_' + Date.now();
+  LEAGUES.push({ id, name: name || 'New League', fbUrl: null, myTeamId: null, ...emptyLeagueState() });
+  switchLeague(id);
+}
+
+function switchLeague(id) {
+  saveLeagues();
+  disconnectFirebase(true); // true = silent (don't re-render yet)
+  CURRENT_LEAGUE_ID = id;
+  const league = LEAGUES.find(l => l.id === id) || LEAGUES[0];
+  S = {
+    gmRankings:    league.gmRankings    || {},
+    gmAssessments: league.gmAssessments || {},
+    settings:      league.settings      || {superflex:false},
+    teams:         league.teams         || JSON.parse(JSON.stringify(SAMPLE_TEAMS)),
+    myRankings:    league.myRankings    || {},
+    myAssessment:  league.myAssessment  || {},
+  };
+  FB_URL     = league.fbUrl    || null;
+  MY_TEAM_ID = league.myTeamId || null;
+  FB_LIVE    = { teams:{}, selfRankings:{}, selfAssessments:{}, settings:{} };
+  U.tab = 'myteam'; U.gmTeam = null; U.tradeTeam = null; U.importStatus = null;
+  saveLeagues();
+  syncSelectors();
+  if (FB_URL) connectFirebase(FB_URL);
+  else render();
+}
+
+// ── State init ─────────────────────────────────────
+let LEAGUES = loadLeagues();
+let CURRENT_LEAGUE_ID = (() => {
+  const saved = localStorage.getItem(CURRENT_LEAGUE_KEY);
+  return (saved && LEAGUES.find(l => l.id === saved)) ? saved : (LEAGUES[0] && LEAGUES[0].id);
+})();
+
+const _curLeague = () => LEAGUES.find(l => l.id === CURRENT_LEAGUE_ID) || LEAGUES[0];
+
+// S: working state for the current league
+let S = (() => {
+  const l = _curLeague() || {};
+  return {
+    gmRankings:    l.gmRankings    || {},
+    gmAssessments: l.gmAssessments || {},
+    settings:      l.settings      || {superflex:false},
+    teams:         l.teams         || JSON.parse(JSON.stringify(SAMPLE_TEAMS)),
+    myRankings:    l.myRankings    || {},
+    myAssessment:  l.myAssessment  || {},
+  };
+})();
+
+let MY_TEAM_ID = (_curLeague() || {}).myTeamId || null;
+let FB_URL     = (_curLeague() || {}).fbUrl    || null;
+
+// Detect join link: #fb=URL in hash — applies to the current league
+(function checkJoinHash() {
+  const h = window.location.hash;
+  if (h.startsWith('#fb=')) {
+    const url = decodeURIComponent(h.slice(4));
+    if (url.startsWith('https://')) {
+      FB_URL = url;
+      saveLeagues();
+    }
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+  }
+})();
+
+// FB_LIVE: the full live Firebase snapshot (other teams' self-rankings, assessments, etc.)
+let FB_LIVE = { teams:{}, selfRankings:{}, selfAssessments:{}, settings:{} };
+let FB_CONNECTED = false;  // SSE connection is live
+let FB_SOURCE    = null;   // EventSource instance
+let FB_PENDING_RETRY = null;
+
+// ── Intel data (server-side aggregation) ───────────
+// Keyed by sleeper player_id. Populated on demand.
+let INTEL = {
+  ecr: {},          // { [player_id]: { rank, rankBest, rankWorst, uncertainty, name } }
+  projections: {},  // { [player_id]: { ppr, half_ppr, std } }
+  odds: [],         // raw odds objects from /api/odds
+  ecrLoaded: false, ecrLoading: false, ecrError: null,
+  projLoaded: false, projLoading: false, projError: null,
+  oddsLoaded: false, oddsLoading: false, oddsError: null,
+  // Settings for Intel tab
+  intelWeek: currentNFLWeek(),
+  intelScoring: 'ppr',
+  intelType: 'ros',  // ros | dynasty
+};
+
+function currentNFLWeek() {
+  // NFL season starts first Thursday of September
+  // Returns 1-18; off-season returns 0
+  const now = new Date();
+  const year = now.getFullYear();
+  const sep1 = new Date(year, 8, 1);
+  const daysTillThurs = (4 - sep1.getDay() + 7) % 7;
+  const kickoff = new Date(year, 8, 1 + daysTillThurs);
+  const ms = now - kickoff;
+  if (ms < 0) return 1;
+  const week = Math.floor(ms / (7 * 24 * 60 * 60 * 1000)) + 1;
+  return Math.min(Math.max(week, 1), 18);
+}
+
+const ODDS_KEY_STORAGE = 'dynastyHQ_oddsApiKey';
+let ODDS_API_KEY = localStorage.getItem(ODDS_KEY_STORAGE) || '';
+
+// Resolve a Sleeper player_id to a player object using the cached player DB
+function resolveSleeperPlayer(pid) {
+  try {
+    const raw = localStorage.getItem('sl_players_v2');
+    if (!raw) return null;
+    const db = JSON.parse(raw);
+    return db[pid] || null;
+  } catch(e) { return null; }
+}
+
+async function loadECR() {
+  // "ECR" here = Sleeper Community Trending (publicly available, no CORS issues)
+  if (INTEL.ecrLoading) return;
+  INTEL.ecrLoading = true; INTEL.ecrError = null; render();
+  try {
+    const hours = 24;
+    const limit = 50;
+    const [addRes, dropRes] = await Promise.all([
+      fetch(`https://api.sleeper.app/v1/players/nfl/trending/add?lookback_hours=${hours}&limit=${limit}`),
+      fetch(`https://api.sleeper.app/v1/players/nfl/trending/drop?lookback_hours=${hours}&limit=${limit}`),
+    ]);
+    if (!addRes.ok || !dropRes.ok) throw new Error('Sleeper trending API unavailable');
+    const adds  = await addRes.json();
+    const drops = await dropRes.json();
+
+    // Build drop lookup
+    const dropMap = {};
+    drops.forEach(d => { dropMap[d.player_id] = d.count; });
+
+    INTEL.ecr = {};
+    adds.forEach((entry, i) => {
+      const pid = entry.player_id;
+      const p   = resolveSleeperPlayer(pid);
+      const name = p ? `${p.first_name || ''} ${p.last_name || ''}`.trim() : pid;
+      const pos  = p ? (p.fantasy_positions?.[0] || p.position || '') : '';
+      const team = p ? (p.team || '') : '';
+      const key  = normalizeName(name) || pid;
+      INTEL.ecr[key] = {
+        fpRank: i + 1,         // rank by add volume
+        addCount: entry.count,
+        dropCount: dropMap[pid] || 0,
+        uncertainty: null,
+        name, team, pos, pid,
+      };
+    });
+    INTEL.ecrLoaded = true;
+  } catch(e) { INTEL.ecrError = e.message; }
+  INTEL.ecrLoading = false; render();
+}
+
+async function loadProjections() {
+  if (INTEL.projLoading) return;
+  INTEL.projLoading = true; INTEL.projError = null; render();
+  try {
+    const year = new Date().getFullYear();
+    const positions = ['QB','RB','WR','TE','K','DEF','DL','LB','DB'];
+    const posQ = positions.map(p => 'position[]=' + p).join('&');
+    const url = `https://api.sleeper.app/v1/projections/nfl/${year}/${INTEL.intelWeek}?season_type=regular&${posQ}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Sleeper returned ${res.status}`);
+    const raw = await res.json();
+
+    INTEL.projections = {};
+    let count = 0;
+    for (const [pid, stats] of Object.entries(raw || {})) {
+      if (!stats) continue;
+      const ppr = stats.pts_ppr ?? stats.pts_half_ppr ?? stats.pts_std ?? null;
+      if (ppr === null) continue;
+      INTEL.projections[pid] = { ppr, half_ppr: stats.pts_half_ppr ?? null, std: stats.pts_std ?? null };
+      count++;
+    }
+
+    if (count === 0) {
+      // Off-season — projections not published yet
+      INTEL.projError = 'OFF_SEASON';
+    } else {
+      INTEL.projLoaded = true;
+    }
+  } catch(e) { INTEL.projError = e.message; }
+  INTEL.projLoading = false; render();
+}
+
+async function loadOdds() {
+  if (!ODDS_API_KEY) {
+    INTEL.oddsError = 'NO_KEY';
+    INTEL.oddsLoading = false; render(); return;
+  }
+  if (INTEL.oddsLoading) return;
+  INTEL.oddsLoading = true; INTEL.oddsError = null; render();
+  try {
+    // The Odds API supports CORS — can be called directly from the browser
+    const markets = 'offensive_rookie_of_the_year,offensive_player_of_the_year,mvp';
+    const url = `https://api.the-odds-api.com/v4/sports/americanfootball_nfl/odds` +
+      `?apiKey=${ODDS_API_KEY}&regions=us&markets=${markets}&oddsFormat=american`;
+    const res = await fetch(url);
+    if (res.status === 401) throw new Error('INVALID_KEY');
+    if (!res.ok) throw new Error(`Odds API returned ${res.status}`);
+    const events = await res.json();
+
+    INTEL.odds = [];
+    for (const event of events || []) {
+      for (const bm of event.bookmakers || []) {
+        for (const mkt of bm.markets || []) {
+          for (const outcome of mkt.outcomes || []) {
+            INTEL.odds.push({
+              market: mkt.key, player: outcome.name,
+              price: outcome.price, bookmaker: bm.key,
+            });
+          }
+        }
+      }
+    }
+    INTEL.oddsLoaded = true;
+  } catch(e) { INTEL.oddsError = e.message; }
+  INTEL.oddsLoading = false; render();
+}
+
+function normalizeName(name) {
+  return (name || '').toLowerCase()
+    .replace(/[^a-z0-9 ]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// UI state (never persisted)
+let U = {
+  tab:'myteam', gmTeam:null, tradeTeam:null,
+  modal:null, addForTeam:null,
+  importStatus:null, importing:false, importProgress:'',
+  showAddTeam:false, showFbSetup:false,
+  intelSearch: '',
+};
+
+// ══════════════════════════════════════════════════
+//  FIREBASE — REST + Server-Sent Events (no SDK needed)
+// ══════════════════════════════════════════════════
+
+async function connectFirebase(url) {
+  if (FB_SOURCE) { FB_SOURCE.close(); FB_SOURCE = null; }
+  if (FB_PENDING_RETRY) { clearTimeout(FB_PENDING_RETRY); FB_PENDING_RETRY = null; }
+
+  FB_URL = url.trim().replace(/\/$/, '');
+  FB_CONNECTED = false;
+
+  // ── Step 1: test the connection with a plain fetch before opening SSE ──
+  // This gives us a real HTTP error code instead of a silent spin.
+  try {
+    const test = await fetch(FB_URL + '/dynastyhq.json?shallow=true&t=' + Date.now());
+    if (test.status === 401 || test.status === 403) {
+      FB_URL = null;
+      U.importStatus = {type:'error', msg:
+        '🔒 Firebase refused the connection (permission denied).\n\n' +
+        'Fix: In Firebase console → Realtime Database → Rules tab, replace the rules with:\n' +
+        '{\n  "rules": {\n    ".read": true,\n    ".write": true\n  }\n}\n' +
+        'Then click Publish and try connecting again.'};
+      render(); return;
+    }
+    if (!test.ok && test.status !== 404) {
+      FB_URL = null;
+      U.importStatus = {type:'error', msg:`Firebase returned error ${test.status}. Double-check your database URL.`};
+      render(); return;
+    }
+  } catch(e) {
+    FB_URL = null;
+    U.importStatus = {type:'error', msg:
+      'Could not reach Firebase. Possible causes:\n' +
+      '• Database URL is wrong (should look like https://your-project-default-rtdb.firebaseio.com)\n' +
+      '• No internet connection\n' +
+      '• The Realtime Database was not created (check Firebase console → Build → Realtime Database)'};
+    render(); return;
+  }
+
+  // Test passed — save URL and open SSE stream
+  saveLeagues();
+  render(); // show "Connecting…" dot while SSE handshakes
+
+  try {
+    FB_SOURCE = new EventSource(FB_URL + '/dynastyhq.json');
+  } catch(e) {
+    FB_URL = null; saveLeagues();
+    U.importStatus = {type:'error', msg:'EventSource failed — check your browser and database URL.'};
+    render(); return;
+  }
+
+  // Timeout: if no event in 12 s, the SSE handshake is stuck
+  const connTimeout = setTimeout(() => {
+    if (!FB_CONNECTED) {
+      U.importStatus = {type:'error', msg:
+        'Firebase connected but sent no data. This usually means the database URL is correct ' +
+        'but the Realtime Database service is not enabled. ' +
+        'Go to Firebase console → Build → Realtime Database → Create database.'};
+      disconnectFirebase();
+      render();
+    }
+  }, 12000);
+
+  FB_SOURCE.addEventListener('put', e => {
+    clearTimeout(connTimeout);
+    try {
+      const {path, data} = JSON.parse(e.data);
+      applyFbEvent(path, data);
+      FB_CONNECTED = true;
+      U.importStatus = null; // clear any prior error
+      saveLocal(); syncSelectors(); render();
+    } catch(err) { console.warn('FB put parse error', err); }
+  });
+
+  FB_SOURCE.addEventListener('patch', e => {
+    clearTimeout(connTimeout);
+    try {
+      const {path, data} = JSON.parse(e.data);
+      if (path === '/' && data) {
+        Object.entries(data).forEach(([k, v]) => applyFbEvent('/' + k, v));
+      } else {
+        applyFbEvent(path, data);
+      }
+      FB_CONNECTED = true;
+      saveLocal(); syncSelectors(); render();
+    } catch(err) { console.warn('FB patch parse error', err); }
+  });
+
+  FB_SOURCE.onerror = () => {
+    // Don't immediately show error if we were already connected — SSE auto-reconnects
+    if (FB_CONNECTED) {
+      FB_CONNECTED = false;
+      render(); // show amber dot during reconnect
+    }
+    // SSE will retry on its own; also schedule our own retry for hard failures
+    if (FB_PENDING_RETRY) clearTimeout(FB_PENDING_RETRY);
+    FB_PENDING_RETRY = setTimeout(() => {
+      if (FB_URL && !FB_CONNECTED) connectFirebase(FB_URL);
+    }, 10000);
+  };
+}
+
+function applyFbEvent(path, data) {
+  // path is relative to /dynastyhq/ root
+  const parts = path.split('/').filter(Boolean);
+
+  if (parts.length === 0) {
+    // Full snapshot
+    if (!data) return;
+    FB_LIVE = {
+      teams:          data.teams          || {},
+      selfRankings:   data.selfRankings   || {},
+      selfAssessments:data.selfAssessments|| {},
+      settings:       data.settings       || {},
+    };
+    // Populate S from Firebase
+    rebuildSFromFB();
+    return;
+  }
+
+  const root = parts[0];
+  if (root === 'teams') {
+    if (parts.length === 1) {
+      FB_LIVE.teams = data || {};
+    } else {
+      if (data === null) delete FB_LIVE.teams[parts[1]];
+      else FB_LIVE.teams[parts[1]] = data;
+    }
+    rebuildTeamsFromFB();
+  } else if (root === 'settings') {
+    if (parts.length === 1) FB_LIVE.settings = data || {};
+    else FB_LIVE.settings[parts[1]] = data;
+    S.settings = Object.assign({superflex:false}, FB_LIVE.settings);
+  } else if (root === 'selfRankings') {
+    if (!FB_LIVE.selfRankings) FB_LIVE.selfRankings = {};
+    if (parts.length === 1) {
+      FB_LIVE.selfRankings = data || {};
+    } else if (parts.length === 2) {
+      if (data === null) delete FB_LIVE.selfRankings[parts[1]];
+      else FB_LIVE.selfRankings[parts[1]] = data;
+    } else if (parts.length === 3) {
+      if (!FB_LIVE.selfRankings[parts[1]]) FB_LIVE.selfRankings[parts[1]] = {};
+      FB_LIVE.selfRankings[parts[1]][parts[2]] = data;
+    }
+    // If it's my own rankings coming back, sync into S.myRankings
+    if (MY_TEAM_ID) {
+      if (parts.length >= 2 && parts[1] === MY_TEAM_ID) {
+        if (parts.length === 2) S.myRankings = data || {};
+        else if (parts.length === 3) { if (!S.myRankings) S.myRankings={}; S.myRankings[parts[2]] = data; }
+      }
+    }
+  } else if (root === 'selfAssessments') {
+    if (!FB_LIVE.selfAssessments) FB_LIVE.selfAssessments = {};
+    if (parts.length === 1) {
+      FB_LIVE.selfAssessments = data || {};
+    } else if (parts.length === 2) {
+      if (data === null) delete FB_LIVE.selfAssessments[parts[1]];
+      else FB_LIVE.selfAssessments[parts[1]] = data;
+    } else {
+      if (!FB_LIVE.selfAssessments[parts[1]]) FB_LIVE.selfAssessments[parts[1]] = {};
+      FB_LIVE.selfAssessments[parts[1]][parts[2]] = data;
+    }
+    // Sync my assessment
+    if (MY_TEAM_ID && parts.length >= 2 && parts[1] === MY_TEAM_ID) {
+      S.myAssessment = (FB_LIVE.selfAssessments[MY_TEAM_ID]) || {};
+    }
+  }
+}
+
+function rebuildSFromFB() {
+  rebuildTeamsFromFB();
+  S.settings = Object.assign({superflex:false}, FB_LIVE.settings);
+  if (MY_TEAM_ID && FB_LIVE.selfRankings[MY_TEAM_ID]) {
+    S.myRankings = FB_LIVE.selfRankings[MY_TEAM_ID];
+  }
+  if (MY_TEAM_ID && FB_LIVE.selfAssessments[MY_TEAM_ID]) {
+    S.myAssessment = FB_LIVE.selfAssessments[MY_TEAM_ID];
+  }
+}
+
+function rebuildTeamsFromFB() {
+  if (!Object.keys(FB_LIVE.teams).length) return;
+  S.teams = Object.values(FB_LIVE.teams).map(t => ({
+    ...t,
+    isMyTeam: t.id === MY_TEAM_ID,
+  }));
+}
+
+async function fbPut(path, data) {
+  if (!FB_URL) return;
+  try {
+    await fetch(`${FB_URL}/dynastyhq/${path}.json`, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(data),
+    });
+  } catch(e) { console.warn('FB write error:', e); }
+}
+
+function disconnectFirebase(silent) {
+  if (FB_SOURCE) { FB_SOURCE.close(); FB_SOURCE = null; }
+  if (FB_PENDING_RETRY) { clearTimeout(FB_PENDING_RETRY); FB_PENDING_RETRY = null; }
+  FB_URL = null;
+  FB_CONNECTED = false;
+  FB_LIVE = { teams:{}, selfRankings:{}, selfAssessments:{}, settings:{} };
+  if (!silent) { saveLeagues(); render(); }
+}
+
+function isLocalFile() {
+  return window.location.protocol === 'file:' || window.location.origin === 'null';
+}
+
+function leagueShareUrl(customAppUrl) {
+  if (!FB_URL) return null;
+  const base = customAppUrl
+    ? customAppUrl.trim().replace(/\/?$/, '')
+    : isLocalFile() ? null : (window.location.origin + window.location.pathname.replace(/\/$/, ''));
+  if (!base) return null;
+  // Make sure it ends with the html filename
+  const path = base.endsWith('.html') ? base : base + '/dynasty-hq.html';
+  return path + '#fb=' + encodeURIComponent(FB_URL);
+}
+
+// ══════════════════════════════════════════════════
+//  TEAM IDENTITY
+// ══════════════════════════════════════════════════
+
+function claimTeam(teamId) {
+  MY_TEAM_ID = teamId;
+  S.teams.forEach(t => t.isMyTeam = t.id === teamId);
+  // Push existing rankings and assessment to Firebase under this teamId
+  if (FB_URL) {
+    Object.entries(S.myRankings || {}).forEach(([pos, ids]) => {
+      fbPut('selfRankings/' + teamId + '/' + pos, ids);
+    });
+    if (Object.keys(S.myAssessment || {}).length) {
+      fbPut('selfAssessments/' + teamId, S.myAssessment);
+    }
+  }
+  saveLocal();
+  syncSelectors();
+}
+
+// ══════════════════════════════════════════════════
+//  RANKING & ASSESSMENT HELPERS
+// ══════════════════════════════════════════════════
+
+// saveS = alias for saveLocal
+function saveS() { saveLocal(); }
+
+function syncSelectors() {
+  const others = S.teams.filter(t => !t.isMyTeam);
+  if (others.length) {
+    if (!U.gmTeam    || !others.find(t => t.id === U.gmTeam))    U.gmTeam    = others[0].id;
+    if (!U.tradeTeam || !others.find(t => t.id === U.tradeTeam)) U.tradeTeam = others[0].id;
+  } else { U.gmTeam = null; U.tradeTeam = null; }
+}
+
+function getRanked(teamId, pos) {
+  const team = S.teams.find(t => t.id === teamId);
+  if (!team) return [];
+  const pp = team.players.filter(p => p.pos === pos);
+  const order = team.isMyTeam
+    ? (S.myRankings[pos] || [])
+    : ((S.gmRankings[teamId] || {})[pos] || []);
+  if (!order.length) return [...pp].sort((a,b) => (a.rank||9999)-(b.rank||9999));
+  const out = [];
+  for (const id of order) { const p = pp.find(x => x.id===id); if (p) out.push(p); }
+  for (const p of pp)     { if (!out.find(x => x.id===p.id)) out.push(p); }
+  return out;
+}
+
+function saveRanking(teamId, pos, ids) {
+  const team = S.teams.find(t => t.id === teamId);
+  if (!team) return;
+  if (team.isMyTeam) {
+    if (!S.myRankings) S.myRankings = {};
+    S.myRankings[pos] = ids;
+    // Write to Firebase so everyone sees it
+    if (FB_URL && MY_TEAM_ID) fbPut('selfRankings/' + MY_TEAM_ID + '/' + pos, ids);
+  } else {
+    if (!S.gmRankings[teamId]) S.gmRankings[teamId] = {};
+    S.gmRankings[teamId][pos] = ids;
+  }
+  saveLocal();
+}
+
+function getAssessment(teamId) {
+  const team = S.teams.find(t => t.id === teamId);
+  if (!team) return {};
+  return team.isMyTeam ? (S.myAssessment || {}) : ((S.gmAssessments || {})[teamId] || {});
+}
+
+function setAssessment(teamId, pos, slot, val) {
+  const team = S.teams.find(t => t.id === teamId);
+  if (!team) return;
+  const current = getAssessment(teamId);
+  if (!current[pos]) current[pos] = {};
+  current[pos][slot] = current[pos][slot] === val ? null : val;
+  if (team.isMyTeam) {
+    S.myAssessment = current;
+    // Write assessment to Firebase so trade partners see your position tags
+    if (FB_URL && MY_TEAM_ID) fbPut('selfAssessments/' + MY_TEAM_ID, current);
+  } else {
+    if (!S.gmAssessments) S.gmAssessments = {};
+    S.gmAssessments[teamId] = current;
+  }
+  saveLocal();
+}
+
+// Their actual self-ranking (from Firebase) — used in Trade Intelligence
+function getTheirLiveRanking(teamId, pos) {
+  return (FB_LIVE.selfRankings[teamId] || {})[pos] || null;
+}
+
+// Their actual assessment (from Firebase) if available, else my GM assessment
+function getTheirLiveAssessment(teamId) {
+  const live = FB_LIVE.selfAssessments[teamId];
+  if (live && Object.keys(live).length) return live;
+  return (S.gmAssessments || {})[teamId] || {};
+}
+
+// ══════════════════════════════════════════════════
+//  TRADE INTELLIGENCE — ranking gap analysis
+// ══════════════════════════════════════════════════
+
+function analyzeOpportunities(myId, theirId) {
+  const myTeam    = S.teams.find(t => t.id === myId);
+  const theirTeam = S.teams.find(t => t.id === theirId);
+  if (!myTeam || !theirTeam) return {buySignals:[], chips:[], hasGMData:false, hasLiveRanks:false};
+
+  const myAssess = getAssessment(myId);
+
+  // Check if we have their LIVE Firebase rankings (the real data)
+  const liveRankings   = FB_LIVE.selfRankings[theirId]   || {};
+  const hasLiveRanks   = Object.keys(liveRankings).some(p => (liveRankings[p]||[]).length > 0);
+
+  // Their assessment: use Firebase live assessment if available, else my GM assessment
+  const theirAssess = getTheirLiveAssessment(theirId);
+
+  // hasGMData = I've ranked their players in GM Board (my scouting notes)
+  const gmData    = S.gmRankings[theirId] || {};
+  const hasGMData = hasLiveRanks || Object.keys(gmData).some(pos => (gmData[pos]||[]).length > 0);
+
+  // ── Buy signals: their players I rank higher than they rank themselves ──
+  const buySignals = [];
+  POSITIONS.forEach(pos => {
+    const ownerOrder = theirTeam.players.filter(p => p.pos === pos);
+    if (!ownerOrder.length) return;
+    const gmOrder = getRanked(theirId, pos); // MY opinion of their players
+    const slots   = getPosSlots(pos);
+
+    // Their ranking: live Firebase self-ranking (real) or roster order (estimate)
+    const livePosOrder = liveRankings[pos] || [];
+    const useLive = livePosOrder.length > 0;
+
+    gmOrder.forEach((pl, myRank) => {
+      const ownerRank = useLive
+        ? livePosOrder.indexOf(pl.id)
+        : ownerOrder.findIndex(p => p.id === pl.id);
+      if (ownerRank < 0) return;
+      const gap = ownerRank - myRank; // positive = I value them more
+      if (gap < 1) return;
+
+      const myNeed    = myAssess[pos]    || {};
+      const theirPos  = theirAssess[pos] || {};
+      const isStarter = myRank < slots.s;
+
+      const tags = [];
+      // My need context
+      if (isStarter && myNeed.starters === 'need')
+        tags.push({cls:'mm-tag-red', text:'⚠️ Your starter need'});
+      else if (!isStarter && myNeed.depth === 'need')
+        tags.push({cls:'mm-tag-red', text:'⚠️ Your depth need'});
+      else if (isStarter && myNeed.starters === 'strength')
+        tags.push({cls:'mm-tag-gray', text:'You have starter depth here'});
+      // Their willingness to sell context
+      if (theirPos.starters === 'strength')
+        tags.push({cls:'mm-tag-green', text:'💪 They have starter surplus'});
+      if (theirPos.depth === 'strength')
+        tags.push({cls:'mm-tag-green', text:'💪 They have depth surplus'});
+      if (theirPos.starters === 'need' || theirPos.depth === 'need')
+        tags.push({cls:'mm-tag-gray', text:'They need '+pos+' — less likely to sell'});
+
+      buySignals.push({pl, pos, myRank, ownerRank, gap, slots, tags, isStarter});
+    });
+  });
+  buySignals.sort((a, b) => b.gap - a.gap);
+
+  // ── Trade chips: my players that align with their needs or my surplus ──
+  const chips = [];
+  POSITIONS.forEach(pos => {
+    const myPlayers = getRanked(myId, pos);
+    const slots     = getPosSlots(pos);
+    const myPos     = myAssess[pos]    || {};
+    const theirPos  = theirAssess[pos] || {};
+
+    myPlayers.forEach((pl, rank) => {
+      if (rank === 0) return; // Never flag your #1 at any position
+
+      const isStarter   = rank < slots.s;
+      const myStrength  = myPos.starters === 'strength' || myPos.depth === 'strength';
+      const theirNeed   = theirPos.starters === 'need'  || theirPos.depth === 'need';
+      const si          = slotInfo(rank, pos);
+
+      // Only surface as a chip if: I have surplus here OR they have a need here
+      if (!myStrength && !theirNeed) return;
+
+      const tags = [];
+      if (myPos.depth === 'strength' || (!isStarter && myPos.starters === 'strength'))
+        tags.push({cls:'mm-tag-green', text:'💪 Your surplus'});
+      if (myPos.starters === 'strength' && isStarter)
+        tags.push({cls:'mm-tag-green', text:'💪 Starter depth'});
+      if (theirPos.starters === 'need' && isStarter)
+        tags.push({cls:'mm-tag-blue',  text:'📥 They need '+pos+' starters'});
+      if (theirPos.depth === 'need' && !isStarter)
+        tags.push({cls:'mm-tag-blue',  text:'📥 They need '+pos+' depth'});
+      if (myPos.starters === 'need' && isStarter)
+        tags.push({cls:'mm-tag-red',   text:'⚠️ You also need starters here'});
+
+      const matchesTheirNeed = theirNeed;
+      chips.push({pl, pos, rank, slots, si, tags, matchesTheirNeed});
+    });
+  });
+  // Sort: matches their need first, then by rank (lower = better player)
+  chips.sort((a, b) => {
+    if (a.matchesTheirNeed !== b.matchesTheirNeed) return b.matchesTheirNeed - a.matchesTheirNeed;
+    return a.rank - b.rank;
+  });
+
+  return {buySignals, chips, hasGMData, hasLiveRanks, myAssess, theirAssess};
+}
+
+// ══════════════════════════════════════════════════
+//  HTML ESCAPE
+// ══════════════════════════════════════════════════
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ══════════════════════════════════════════════════
+//  RENDER HELPERS
+// ══════════════════════════════════════════════════
+
+function playerRow(pl, idx, total, teamId, pos, canDelete) {
+  const key = esc(teamId + '_' + pos);
+  const si  = slotInfo(idx, pos);
+  const meta = pl.age > 0 ? 'Age ' + pl.age : 'Team DEF';
+  return `
+    <div class="pr" draggable="true"
+      data-pr="1" data-key="${key}"
+      data-tid="${esc(teamId)}" data-pos="${esc(pos)}" data-idx="${idx}">
+      <span class="pr-rank">#${idx+1}</span>
+      <span class="pr-grip">⠿</span>
+      <div class="pr-info">
+        <div class="pr-name">${esc(pl.name)}</div>
+        <div class="pr-meta">${meta} <span class="sl ${si.cls}">${si.text}</span></div>
+      </div>
+      <div class="pr-right">
+        <div class="mv">
+          <button class="mv-btn" data-act="mv" data-tid="${esc(teamId)}" data-pos="${esc(pos)}" data-idx="${idx}" data-dir="-1" ${idx===0?'disabled':''}>▲</button>
+          <button class="mv-btn" data-act="mv" data-tid="${esc(teamId)}" data-pos="${esc(pos)}" data-idx="${idx}" data-dir="1"  ${idx===total-1?'disabled':''}>▼</button>
+        </div>
+        ${canDelete ? `<button class="btn btn-danger btn-sm" data-act="del-player" data-tid="${esc(teamId)}" data-pid="${esc(pl.id)}">✕</button>` : ''}
+      </div>
+    </div>`;
+}
+
+function assessmentRow(teamId, pos) {
+  const assess  = getAssessment(teamId);
+  const posA    = assess[pos] || {};
+  const slots   = getPosSlots(pos);
+  const hasDepth = slots.b > 0;
+
+  function aBtns(slot, current) {
+    return [
+      {val:'strength', lbl:'💪 Strength', cls:'as'},
+      {val:'neutral',  lbl:'— Neutral',  cls:'an'},
+      {val:'need',     lbl:'⚠️ Need',    cls:'ane'},
+    ].map(({val, lbl, cls}) => {
+      const active = current === val ? ` ${cls}` : '';
+      return `<button class="abtn${active}" data-act="assess"
+        data-tid="${esc(teamId)}" data-pos="${esc(pos)}" data-slot="${slot}" data-val="${val}">${lbl}</button>`;
+    }).join('');
+  }
+
+  return `<div class="assess-row">
+    <span class="assess-lbl">Starters</span>
+    ${aBtns('starters', posA.starters)}
+    ${hasDepth ? `
+      <div class="assess-sep"></div>
+      <span class="assess-lbl">Depth</span>
+      ${aBtns('depth', posA.depth)}
+    ` : ''}
+  </div>`;
+}
+
+function assessmentTags(teamId, pos) {
+  const assess = getAssessment(teamId);
+  const posA   = assess[pos] || {};
+  const tags   = [];
+  if (posA.starters) tags.push(`<span class="atag atag-${posA.starters}">${posA.starters==='strength'?'💪':'⚠️'} Starters</span>`);
+  if (posA.depth)    tags.push(`<span class="atag atag-${posA.depth}">${posA.depth==='strength'?'💪':'⚠️'} Depth</span>`);
+  return tags.join(' ');
+}
+
+function positionCard(teamId, pos, canDelete) {
+  const players = getRanked(teamId, pos);
+  if (!players.length) return '';
+  const v = getPosSlots(pos);
+  let rows = '';
+  players.forEach((pl, i) => {
+    if (i === v.s && v.b > 0)                    rows += `<div class="sep"><span class="sep-lbl">Backup</span></div>`;
+    if (i === v.s + v.b && i < players.length)   rows += `<div class="sep"><span class="sep-lbl">Deep Bench</span></div>`;
+    rows += playerRow(pl, i, players.length, teamId, pos, canDelete);
+  });
+  const tags = assessmentTags(teamId, pos);
+  return `
+    <div class="card">
+      <div class="card-hd">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="pb pb-${pos}">${pos}</span>
+          <span style="font-size:12px;color:var(--muted)">${players.length} player${players.length!==1?'s':''}</span>
+          ${tags}
+        </div>
+      </div>
+      ${rows}
+      ${assessmentRow(teamId, pos)}
+    </div>`;
+}
+
+function teamPositions(teamId, canDelete) {
+  const team = S.teams.find(t => t.id === teamId);
+  if (!team) return '';
+  const used = POSITIONS.filter(pos => team.players.some(p => p.pos === pos));
+  if (!used.length) return `<div class="empty"><div class="empty-ico">📋</div><p>No players yet.</p></div>`;
+  return used.map(pos => positionCard(teamId, pos, canDelete)).join('');
+}
+
+// ══════════════════════════════════════════════════
+//  TAB RENDERERS
+// ══════════════════════════════════════════════════
+
+function renderNav() {
+  const tabs=[
+    {id:'myteam',label:'My Team'},{id:'gmboard',label:'GM Board'},
+    {id:'tradefinder',label:'Trade Finder'},{id:'intel',label:'📊 Intel'},{id:'import',label:'⚙️ Setup'},
+  ];
+  const syncDot = FB_URL
+    ? (FB_CONNECTED
+        ? `<span title="Live sync active" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-left:6px;flex-shrink:0"></span>`
+        : `<span title="Connecting…" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;margin-left:6px;flex-shrink:0;animation:sp .8s linear infinite"></span>`)
+    : '';
+  const curLeagueName = (_curLeague() || {}).name || 'League';
+  const leagueSelector = LEAGUES.length > 1
+    ? `<div style="display:flex;align-items:center;gap:0;border-left:1px solid var(--border);border-right:1px solid var(--border);padding:0 2px;flex-shrink:0">
+         <select data-act="switch-league" style="background:var(--bg2);color:var(--text);border:none;font-size:12px;font-weight:600;padding:6px 8px;cursor:pointer;max-width:140px;outline:none">
+           ${LEAGUES.map(l=>`<option value="${l.id}"${l.id===CURRENT_LEAGUE_ID?' selected':''}>${esc(l.name)}</option>`).join('')}
+         </select>
+       </div>`
+    : `<div style="display:flex;align-items:center;padding:0 12px;font-size:12px;font-weight:600;color:var(--muted);border-left:1px solid var(--border);flex-shrink:0;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis">${esc(curLeagueName)}</div>`;
+  return `<nav class="nav"><div class="nav-inner">
+    <div class="nav-logo" style="display:flex;align-items:center;flex-shrink:0">🏈 Dynasty<span>HQ</span>${syncDot}</div>
+    ${leagueSelector}
+    ${tabs.map(t=>`<button class="nav-tab${U.tab===t.id?' active':''}" data-act="tab" data-val="${t.id}">${t.label}</button>`).join('')}
+  </div></nav>`;
+}
+
+function renderMyTeam() {
+  const my = S.teams.find(t => t.isMyTeam);
+  if (!my) return `<div class="page"><div class="empty"><div class="empty-ico">🏈</div>
+    <p>No team set up yet.<br>Go to <strong>Import</strong> and click "Set as My Team".</p>
+  </div></div>`;
+
+  const sfx    = S.settings && S.settings.superflex;
+  const idpFlx = S.settings && S.settings.idpFlex;
+  const isIDP  = S.settings && S.settings.isIDP;
+  return `<div class="page">
+    <div class="page-hd">
+      <div>
+        <div class="page-title">🏟️ ${esc(my.name)}</div>
+        <div class="page-sub">Drag to rank · ▲▼ on mobile · Rankings &amp; assessments auto-save</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <label class="sfx-toggle${sfx?' on':''}">
+          <input type="checkbox" data-act="superflex" ${sfx?'checked':''}> Superflex
+        </label>
+        ${isIDP ? `<label class="sfx-toggle${idpFlx?' on':''}">
+          <input type="checkbox" data-act="idpflex" ${idpFlx?'checked':''}> IDP Flex
+        </label>` : ''}
+        <button class="btn btn-gold" data-act="open-add" data-tid="${esc(my.id)}">+ Add Player</button>
+      </div>
+    </div>
+    ${sfx    ? '<div class="alert alert-info" style="margin-bottom:16px">⚡ <strong>Superflex:</strong> QBs have 2 starter slots.</div>' : ''}
+    ${idpFlx ? '<div class="alert alert-info" style="margin-bottom:16px">🛡️ <strong>IDP Flex:</strong> LBs have 2 starter slots.</div>' : ''}
+    ${teamPositions(my.id, true)}
+  </div>`;
+}
+
+function renderGMBoard() {
+  const others = S.teams.filter(t => !t.isMyTeam);
+  if (!others.length) return `<div class="page"><div class="empty"><div class="empty-ico">📋</div>
+    <p>No other teams yet. Import from Sleeper or add teams in the Import tab.</p>
+  </div></div>`;
+  const cur = others.find(t => t.id === U.gmTeam) || others[0];
+  return `<div class="page">
+    <div class="page-hd">
+      <div>
+        <div class="page-title">📋 GM Board</div>
+        <div class="page-sub">Rank their players · Tag positions as Need or Strength · Informs trade logic</div>
+      </div>
+    </div>
+    <div class="fg">
+      <label>Select Team to Scout</label>
+      <select data-act="gm-team">
+        ${others.map(t=>`<option value="${esc(t.id)}"${t.id===cur.id?' selected':''}>${esc(t.name)}</option>`).join('')}
+      </select>
+    </div>
+    ${teamPositions(cur.id, false)}
+  </div>`;
+}
+
+function renderTradeFinder() {
+  const my     = S.teams.find(t => t.isMyTeam);
+  const others = S.teams.filter(t => !t.isMyTeam);
+  const cur    = others.find(t => t.id === U.tradeTeam) || others[0];
+
+  if (!my || !cur) return `<div class="page"><div class="empty"><div class="empty-ico">🔄</div>
+    <p>Need at least 2 teams. Import a league or add teams in the Import tab.</p>
+  </div></div>`;
+
+  const teamSel = others.length > 1 ? `<div class="fg">
+    <label>Analyze Trade Partner</label>
+    <select data-act="trade-team">
+      ${others.map(t=>`<option value="${esc(t.id)}"${t.id===cur.id?' selected':''}>${esc(t.name)}</option>`).join('')}
+    </select>
+  </div>` : '';
+
+  const {buySignals, chips, hasGMData, hasLiveRanks, myAssess, theirAssess} = analyzeOpportunities(my.id, cur.id);
+
+  // ── Ranking source banner ──
+  const rankingSourceBanner = hasLiveRanks
+    ? `<div style="background:#0a2010;border:1px solid #22c55e;border-radius:8px;padding:10px 14px;font-size:13px;color:#86efac;margin-bottom:12px">
+         🟢 <strong>Live — using ${esc(cur.name)}'s actual self-rankings.</strong>
+         Gaps are a genuine difference in how you each value their players.
+       </div>`
+    : FB_CONNECTED
+    ? `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--muted);margin-bottom:12px">
+         ⏳ Waiting for <strong>${esc(cur.name)}</strong> to rank their players in the app.
+         Once they do, gaps will appear here automatically.
+         ${hasGMData ? '<br>Currently showing gaps vs. your GM Board ranking of their players.' : ''}
+       </div>`
+    : !FB_URL
+    ? `<div class="alert alert-info">
+         <strong>Connect your league</strong> to see real ranking gaps from all owners.
+         Go to <strong>⚙️ Setup</strong> and enter your Firebase database URL.
+       </div>`
+    : `<div class="alert alert-info">
+         <strong>Connecting to league…</strong> Ranking gaps will appear automatically once connected.
+       </div>`;
+
+  // ── Context panel (assessments overview) ──
+  function assessLine(assess, label) {
+    const parts = POSITIONS.map(pos => {
+      const pa = assess[pos] || {};
+      const bits = [];
+      if (pa.starters) bits.push(`<span class="atag atag-${pa.starters}">${pos} ${pa.starters==='strength'?'💪 Str':'⚠️ Need'}</span>`);
+      if (pa.depth)    bits.push(`<span class="atag atag-${pa.depth}">${pos} depth ${pa.depth==='strength'?'💪':'⚠️'}</span>`);
+      return bits.join('');
+    }).filter(Boolean);
+    if (!parts.length) return '';
+    return `<div class="ctx-row"><span class="ctx-label">${label}</span>${parts.join('')}</div>`;
+  }
+  const myLine    = assessLine(myAssess,    'My Team');
+  const theirLine = assessLine(theirAssess, esc(cur.name));
+  const ctxPanel  = (myLine || theirLine) ? `
+    <div class="ctx-panel">
+      ${myLine}
+      ${theirLine}
+    </div>` : '';
+
+
+  // ── Buy signals ──
+  function mmTag(tag) {
+    return `<span class="mm-tag ${tag.cls}">${tag.text}</span>`;
+  }
+
+  const buyRows = buySignals.map(b => {
+    const hot = b.gap >= 2;
+    const slotTxt = slotInfo(b.myRank, b.pos).text;
+    return `<div class="mm-item${hot?' hot':''}">
+      <span class="pb pb-${b.pos}">${b.pos}</span>
+      <div class="mm-body">
+        <div class="mm-name">${esc(b.pl.name)}</div>
+        <div class="mm-ranks">
+          You rank: <strong>#${b.myRank+1} ${b.pos}</strong> (${slotTxt})
+          &nbsp;·&nbsp; Owner appears to rank: <strong>#${b.ownerRank+1}</strong>
+        </div>
+        ${b.tags.length ? `<div class="mm-tags">${b.tags.map(mmTag).join('')}</div>` : ''}
+      </div>
+      <div class="mm-gap${b.gap===1?' neutral':''}">+${b.gap}</div>
+    </div>`;
+  }).join('');
+
+  // ── Trade chips ──
+  const chipRows = chips.map(c => {
+    return `<div class="mm-item${c.matchesTheirNeed?' chip-match':''}">
+      <span class="pb pb-${c.pos}">${c.pos}</span>
+      <div class="mm-body">
+        <div class="mm-name">${esc(c.pl.name)}</div>
+        <div class="mm-ranks">
+          Your rank: <strong>#${c.rank+1} ${c.pos}</strong> (${c.si.text})
+          ${c.pl.age > 0 ? '&nbsp;·&nbsp; Age '+c.pl.age : ''}
+        </div>
+        ${c.tags.length ? `<div class="mm-tags">${c.tags.map(mmTag).join('')}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  // ── How-to footer ──
+  const howTo = `<div style="background:var(--bg3);border:1px dashed var(--border);border-radius:8px;padding:14px 16px;font-size:13px;color:var(--muted);line-height:1.7;margin-top:8px">
+    <strong style="color:var(--text)">How this works</strong><br>
+    When everyone in your league connects to the same Firebase database and ranks their own players,
+    gaps appear here automatically — <em>no sharing, no importing, no manual steps</em>.
+    Each owner's rankings update live the moment they drag a player.<br><br>
+    A <strong style="color:var(--gold)">buy signal</strong> means you rank their player higher than they rank themselves — a genuine trade edge.
+    A <strong style="color:var(--blue)">trade chip</strong> is where you have depth or they have a tagged need — your leverage.
+    Use this to decide <em>who to call</em> and <em>what to lead with</em>.
+  </div>`;
+
+  return `<div class="page">
+    <div class="page-hd">
+      <div>
+        <div class="page-title">🔄 Trade Intelligence</div>
+        <div class="page-sub">Ranking gaps and roster context — you decide how to use it</div>
+      </div>
+    </div>
+    ${teamSel}
+    ${rankingSourceBanner}
+    ${ctxPanel}
+
+    <div class="mm-section">
+      <div class="mm-section-hd">
+        <span class="mm-section-title">🔍 Buy Signals — ${esc(cur.name)} players you value more</span>
+        <span class="mm-count">${buySignals.length} found</span>
+      </div>
+      ${buySignals.length
+        ? `<div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+             Gap = spots higher you rank them vs. ${hasLiveRanks ? 'their own self-ranking (live)' : 'estimated roster order'}.
+           </div>
+           ${buyRows}`
+        : `<div class="mm-empty">${hasGMData
+             ? 'No gaps found — your rankings closely match theirs.'
+             : hasLiveRanks ? 'You have not ranked their players in GM Board yet.'
+             : 'Rank their players in GM Board, or wait for them to join the app.'}</div>`
+      }
+    </div>
+
+    <div class="mm-section">
+      <div class="mm-section-hd">
+        <span class="mm-section-title">📤 Your Trade Chips — What ${esc(cur.name)} might want</span>
+        <span class="mm-count">${chips.length} found</span>
+      </div>
+      ${chips.length
+        ? `<div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+             Players where you have depth to spare or they have a known need.
+             Tag positions in <strong>My Team</strong> and <strong>GM Board</strong> to refine this list.
+           </div>
+           ${chipRows}`
+        : `<div class="mm-empty">Tag your position strengths in <strong>My Team</strong> and their needs in <strong>GM Board</strong> to identify chips.</div>`
+      }
+    </div>
+
+    ${howTo}
+  </div>`;
+}
+
+function renderImport() {
+  const statHtml = U.importStatus
+    ? `<div class="alert alert-${esc(U.importStatus.type)}">${esc(U.importStatus.msg)}</div>` : '';
+  const progHtml = U.importProgress
+    ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:13px;color:var(--muted)">
+         <span class="spin"></span>${esc(U.importProgress)}</div>` : '';
+  const addTeamHtml = U.showAddTeam
+    ? `<div style="display:flex;gap:8px;margin-bottom:14px">
+         <input type="text" id="add-team-name" placeholder="Team name" style="flex:1" />
+         <button class="btn btn-gold" data-act="add-team">Add</button>
+       </div>` : '';
+
+  // Firebase status block
+  const fbStatus = FB_URL
+    ? (FB_CONNECTED
+        ? `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0a2010;border:1px solid #22c55e;border-radius:8px;margin-bottom:12px">
+             <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22c55e;flex-shrink:0"></span>
+             <div style="flex:1;font-size:13px;color:#86efac"><strong>Live sync active</strong> — rankings sync in real time for everyone.</div>
+             <button class="btn btn-danger btn-sm" data-act="fb-disconnect">Disconnect</button>
+           </div>`
+        : `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#1e1800;border:1px solid #f59e0b;border-radius:8px;margin-bottom:12px">
+             <span class="spin"></span>
+             <div style="flex:1;font-size:13px;color:#fcd34d">Connecting to Firebase…</div>
+             <button class="btn btn-danger btn-sm" data-act="fb-disconnect">Disconnect</button>
+           </div>`)
+    : '';
+
+  const isLocal  = isLocalFile();
+  const shareUrl = leagueShareUrl();
+
+  // How league members join — changes based on whether app is hosted or local
+  const joinSection = FB_CONNECTED ? (isLocal
+    ? `<div style="padding:14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-top:12px">
+         <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">📋 How your league joins</div>
+         <p style="font-size:13px;color:var(--muted);margin-bottom:10px;line-height:1.6">
+           You're running the app locally, so there's no shareable link yet.
+           Share these <strong>two things</strong> with your league in a group message:
+         </p>
+         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:10px;font-size:13px">
+           <div style="color:var(--muted);font-size:11px;font-weight:700;margin-bottom:4px">1 — THE APP FILE</div>
+           <div style="color:var(--text)">Send them the <strong>dynasty-hq.html</strong> file (it's on your Desktop in the "Dynasty Football" folder). They open it by double-clicking.</div>
+         </div>
+         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:10px;font-size:13px">
+           <div style="color:var(--muted);font-size:11px;font-weight:700;margin-bottom:4px">2 — THE FIREBASE URL (copy this)</div>
+           <div style="font-family:monospace;font-size:12px;color:var(--gold);word-break:break-all;margin-bottom:8px">${esc(FB_URL)}</div>
+           <button class="btn btn-outline btn-sm" data-act="fb-copy-url">📋 Copy Firebase URL</button>
+         </div>
+         <p style="font-size:12px;color:var(--muted);line-height:1.5">
+           When they open the app, they go to <strong>⚙️ Setup</strong>, paste the Firebase URL, and click Connect. That's it — they're synced.
+         </p>
+         <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px;font-size:12px;color:var(--muted)">
+           💡 <strong>Want a one-click join link instead?</strong> Deploy to Netlify (free) — the app generates a shareable URL automatically. See the instructions below.
+         </div>
+       </div>`
+    : `<div style="padding:14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-top:12px">
+         <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">🔗 League join link</div>
+         <div style="font-size:12px;color:var(--muted);word-break:break-all;margin-bottom:10px;font-family:monospace;background:var(--bg2);padding:8px 10px;border-radius:5px;border:1px solid var(--border)">${esc(shareUrl)}</div>
+         <div style="display:flex;gap:8px;flex-wrap:wrap">
+           <button class="btn btn-gold btn-sm" data-act="fb-copy-join">📋 Copy Join Link</button>
+         </div>
+         <p style="font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5">
+           Anyone who opens this link is automatically connected to your league database. They just pick their team in Step 3 and start ranking.
+         </p>
+       </div>`) : '';
+
+  // Netlify deployment hint (only shown when running locally and connected)
+  const netlifyHint = FB_CONNECTED && isLocal ? `
+    <div class="card" style="border-color:#1d4ed8">
+      <div class="card-hd"><div class="card-title" style="color:#93c5fd">💡 Optional — Get a one-click join link</div></div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6">
+        Deploy the app to Netlify (free, 2 minutes) and you'll get a shareable URL like
+        <code>https://your-league.netlify.app</code>. Anyone who opens it is auto-connected to your Firebase database with no setup needed.
+      </p>
+      <div style="font-size:13px;color:var(--muted);line-height:1.8">
+        1. Go to <strong style="color:var(--text)">netlify.com</strong> → Sign up free<br>
+        2. Click <strong style="color:var(--text)">Add new site → Deploy manually</strong><br>
+        3. Drag your <strong style="color:var(--text)">Dynasty Football</strong> folder onto the page<br>
+        4. Your app is live — come back here and the join link will appear automatically
+      </div>
+    </div>` : '';
+
+  const curLeague = _curLeague() || {};
+
+  return `<div class="page">
+    <div class="page-hd">
+      <div><div class="page-title">⚙️ Setup</div>
+      <div class="page-sub">Connect league sync, import from Sleeper, manage teams</div></div>
+    </div>
+
+    <!-- LEAGUE MANAGEMENT -->
+    <div class="card">
+      <div class="card-hd">
+        <div class="card-title">🏆 Leagues</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-gold btn-sm" data-act="add-league" onclick="document.getElementById('new-league-name').value=''">+ Add League</button>
+          ${LEAGUES.length > 1 ? `<button class="btn btn-danger btn-sm" data-act="delete-league">Delete This League</button>` : ''}
+        </div>
+      </div>
+
+      <!-- Rename current league -->
+      <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center">
+        <input type="text" id="league-name-input" value="${esc(curLeague.name||'')}" placeholder="League name" style="flex:1;font-size:14px;font-weight:600" />
+        <button class="btn btn-outline btn-sm" data-act="rename-league">Rename</button>
+      </div>
+
+      <!-- All leagues list -->
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
+        ${LEAGUES.map(l => `
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:${l.id===CURRENT_LEAGUE_ID?'var(--bg2)':'var(--bg3)'};border:1px solid ${l.id===CURRENT_LEAGUE_ID?'var(--gold)':'var(--border)'};border-radius:7px">
+            <div style="flex:1;font-size:13px;font-weight:600;color:${l.id===CURRENT_LEAGUE_ID?'var(--gold)':'var(--text)'}">${esc(l.name)}</div>
+            <div style="font-size:11px;color:var(--muted)">${l.fbUrl ? '🔴 Firebase' : '📁 Local'}</div>
+            ${l.id!==CURRENT_LEAGUE_ID ? `<button class="btn btn-outline btn-sm" data-act="switch-league-btn" data-val="${l.id}">Switch</button>` : `<span style="font-size:11px;color:var(--gold);font-weight:700">ACTIVE</span>`}
+          </div>`).join('')}
+      </div>
+
+      <!-- Add new league -->
+      <div style="display:flex;gap:8px;align-items:center;border-top:1px solid var(--border);padding-top:12px">
+        <input type="text" id="new-league-name" placeholder="New league name (e.g. IDP League)" style="flex:1;font-size:13px" />
+        <button class="btn btn-gold btn-sm" data-act="add-league">+ Add</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- STEP 1: Firebase live sync -->
+    <div class="card">
+      <div class="card-hd"><div class="card-title">🔴 Step 1 — Connect Live League Sync</div></div>
+      ${fbStatus}
+      ${!FB_URL ? `
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+        Everyone in your league connects to the <strong>same Firebase database</strong>.
+        When any owner ranks their players, every other owner sees the update instantly —
+        no sharing links, no manual imports.
+      </p>
+      <div class="alert alert-info" style="margin-bottom:14px">
+        <strong>First time? 5-minute Firebase setup:</strong><br>
+        1. Go to <strong>console.firebase.google.com</strong> → Create project (name it anything)<br>
+        2. Click <strong>Build → Realtime Database → Create database</strong><br>
+        3. Choose <strong>"Start in test mode"</strong> → click Enable<br>
+        4. Copy the database URL (looks like <code>https://your-project-default-rtdb.firebaseio.com</code>)<br>
+        5. Paste it below and click Connect
+      </div>
+      <div class="fg">
+        <label>Firebase Realtime Database URL</label>
+        <input type="text" id="fb-url-input" placeholder="https://your-project-default-rtdb.firebaseio.com" style="font-size:13px" />
+      </div>
+      <button class="btn btn-gold" data-act="fb-connect">Connect to Firebase</button>
+      ` : ''}
+      ${joinSection}
+    </div>
+
+    ${netlifyHint}
+
+    <div class="divider"></div>
+
+    <!-- STEP 2: Sleeper import -->
+    <div class="card">
+      <div class="card-hd"><div class="card-title">🔗 Step 2 — Import from Sleeper</div></div>
+      <div class="alert alert-info" style="margin-bottom:12px">
+        <strong>Where's my league ID?</strong> Open Sleeper → tap your league → scroll to the bottom → copy the League ID.
+        ${FB_CONNECTED ? '<br><strong>With sync connected, this imports rosters for the entire league automatically.</strong>' : ''}
+      </div>
+      ${statHtml}${progHtml}
+      <div class="fg">
+        <label>Sleeper League ID</label>
+        <input type="text" id="sleeper-lid" placeholder="e.g. 1048268799842312192" />
+      </div>
+      <button class="btn btn-gold" data-act="sleeper-import" ${U.importing?'disabled':''}>
+        ${U.importing ? 'Importing…' : 'Import League from Sleeper'}
+      </button>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- STEP 3: Claim your team -->
+    <div class="card">
+      <div class="card-hd">
+        <div class="card-title">👤 Step 3 — Claim Your Team (${S.teams.length} teams)</div>
+        <button class="btn btn-outline btn-sm" data-act="toggle-add-team">+ Add Team</button>
+      </div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">
+        Each league member opens the app and clicks <strong>"This Is My Team"</strong> next to their team.
+        Their rankings then sync live to everyone else.
+      </p>
+      ${addTeamHtml}
+      ${S.teams.map(t=>`
+        <div class="tlr">
+          <div style="flex:1">
+            <span style="font-weight:600">${esc(t.name)}</span>
+            ${t.isMyTeam?'<span class="badge-my">My Team</span>':''}
+            ${FB_LIVE.selfRankings[t.id] ? '<span style="margin-left:6px;font-size:11px;color:#22c55e;font-weight:700">● Ranked</span>' : ''}
+            <span style="margin-left:8px;font-size:12px;color:var(--muted)">${t.players.length} players</span>
+          </div>
+          ${!t.isMyTeam?`<button class="btn btn-green btn-sm" data-act="set-my-team" data-tid="${esc(t.id)}">This Is My Team</button>`:''}
+        </div>`).join('')}
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">⚠️ Reset All Data</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Clears local teams, rankings, and assessments. Does not affect Firebase data.</p>
+      <button class="btn btn-danger" data-act="reset">Reset Local Data</button>
+    </div>
+  </div>`;
+}
+
+function renderModal() {
+  if (U.modal !== 'addplayer') return '';
+  return `<div class="overlay" id="modal-overlay">
+    <div class="modal">
+      <div class="modal-title">Add Player</div>
+      <div class="fg">
+        <label>Player Name *</label>
+        <input type="text" id="ap-name" placeholder="e.g. Justin Herbert" />
+      </div>
+      <div class="frow">
+        <div class="fg">
+          <label>Position</label>
+          <select id="ap-pos">${POSITIONS.map(p=>`<option>${p}</option>`).join('')}</select>
+        </div>
+        <div class="fg">
+          <label>Age</label>
+          <input type="number" id="ap-age" placeholder="26" min="18" max="50" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" data-act="close-modal">Cancel</button>
+        <button class="btn btn-gold"    data-act="submit-add">Add Player</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════
+//  INTEL TAB
+// ══════════════════════════════════════════════════
+
+function renderIntel() {
+  const noFunctions = false; // now fully client-side
+
+  // Build a name→rank lookup from our own rankings across all positions
+  const myRankLookup = {}; // name → { pos, rank }
+  const allPlayers = S.teams.flatMap(t => t.players || []);
+  Object.entries(S.myRankings || {}).forEach(([pos, ids]) => {
+    (ids || []).forEach((id, i) => {
+      const p = allPlayers.find(p => p.id === id);
+      if (p) myRankLookup[normalizeName(p.name)] = { pos, rank: i + 1, name: p.name };
+    });
+  });
+
+  // Merge ECR data with my own rankings + projections
+  const ecrEntries = Object.values(INTEL.ecr);
+  const search = (U.intelSearch || '').toLowerCase().trim();
+  const filtered = ecrEntries
+    .filter(e => !search || e.name.toLowerCase().includes(search))
+    .slice(0, 100);
+
+  // Controls row
+  const controls = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
+      <div style="display:flex;gap:0;background:var(--bg3);border:1px solid var(--border);border-radius:6px;overflow:hidden">
+        ${['ros','dynasty'].map(t=>`<button class="btn btn-sm${INTEL.intelType===t?' btn-gold':''}" style="border-radius:0;border:none" data-act="intel-type" data-val="${t}">${t==='ros'?'Redraft':'Dynasty'}</button>`).join('')}
+      </div>
+      <div style="display:flex;gap:0;background:var(--bg3);border:1px solid var(--border);border-radius:6px;overflow:hidden">
+        ${['ppr','half-ppr','standard'].map(s=>`<button class="btn btn-sm${INTEL.intelScoring===s?' btn-gold':''}" style="border-radius:0;border:none" data-act="intel-scoring" data-val="${s}">${s==='half-ppr'?'½ PPR':s==='standard'?'Std':s.toUpperCase()}</button>`).join('')}
+      </div>
+      <select data-act="intel-week" style="background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;font-weight:600">
+        ${Array.from({length:18},(_,i)=>`<option value="${i+1}"${INTEL.intelWeek===i+1?' selected':''}>Week ${i+1}</option>`).join('')}
+      </select>
+      <button class="btn btn-gold btn-sm" data-act="intel-load">🔄 Load Data</button>
+    </div>
+    <div style="position:relative;margin-bottom:14px">
+      <input type="text" id="intel-search" placeholder="Search player…" value="${esc(U.intelSearch||'')}"
+        style="width:100%;padding:8px 12px 8px 32px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:13px" />
+      <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted)">🔍</span>
+    </div>`;
+
+  // Not-hosted banner
+  if (noFunctions) {
+    return `<div class="page">
+      <div class="page-hd"><div><div class="page-title">📊 Player Intel</div>
+      <div class="page-sub">Expert consensus, projections, and Vegas lines</div></div></div>
+      <div class="alert alert-info">
+        <strong>Intel requires the hosted app.</strong><br>
+        Data aggregation runs on Netlify servers to bypass CORS restrictions.
+        Open <a href="https://gleeful-tulumba-44d1d7.netlify.app" target="_blank" style="color:var(--gold)">gleeful-tulumba-44d1d7.netlify.app</a> to use this feature.
+      </div>
+    </div>`;
+  }
+
+  // Status rows for each data source
+  function statusBadge(loaded, loading, error) {
+    if (loading) return `<span style="font-size:11px;color:#fcd34d">⟳ Loading…</span>`;
+    if (error === 'OFF_SEASON') return `<span style="font-size:11px;color:var(--muted)">Off-season</span>`;
+    if (error === 'NO_KEY' || error === 'INVALID_KEY') return `<span style="font-size:11px;color:var(--muted)">No key</span>`;
+    if (error) return `<span style="font-size:11px;color:var(--red)" title="${esc(error)}">⚠ Error</span>`;
+    if (loaded) return `<span style="font-size:11px;color:#86efac">✓ Loaded</span>`;
+    return `<span style="font-size:11px;color:var(--muted)">Not loaded</span>`;
+  }
+
+  const oddsKeySetup = `
+    <div style="margin-top:10px;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:7px;font-size:13px">
+      <div style="font-weight:700;margin-bottom:6px;color:var(--text)">🎰 Vegas Odds Setup (optional)</div>
+      <p style="color:var(--muted);margin-bottom:8px;line-height:1.5">
+        Get a free API key at <strong style="color:var(--text)">the-odds-api.com</strong> (500 req/month free).
+        Unlocks NFL player props, futures odds, and ROTY/MVP lines.
+      </p>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="odds-key-input" placeholder="Paste your Odds API key here"
+          value="${esc(ODDS_API_KEY)}"
+          style="flex:1;font-size:12px;font-family:monospace;background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:6px 10px;color:var(--text)" />
+        <button class="btn btn-gold btn-sm" data-act="save-odds-key">Save Key</button>
+        ${ODDS_API_KEY ? `<button class="btn btn-outline btn-sm" data-act="load-odds">Load Odds</button>` : ''}
+      </div>
+      ${INTEL.oddsError === 'INVALID_KEY' ? `<div style="color:var(--red);font-size:12px;margin-top:6px">⚠ Invalid key — double-check it at the-odds-api.com</div>` : ''}
+    </div>`;
+
+  const sourceBar = `
+    <div style="padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:14px">
+      <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;margin-bottom:${!ODDS_API_KEY || INTEL.oddsError === 'INVALID_KEY' ? '0' : '0'}">
+        <div style="display:flex;align-items:center;gap:6px">
+          <strong>Sleeper Trending</strong> ${statusBadge(INTEL.ecrLoaded, INTEL.ecrLoading, INTEL.ecrError)}
+          ${INTEL.ecrError && INTEL.ecrError !== 'NO_KEY' ? `<span style="font-size:11px;color:var(--muted)"title="${esc(INTEL.ecrError)}">ⓘ</span>` : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <strong>Sleeper Projections</strong> ${statusBadge(INTEL.projLoaded, INTEL.projLoading, INTEL.projError)}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <strong>Vegas Odds</strong>
+          ${ODDS_API_KEY && !INTEL.oddsError ? statusBadge(INTEL.oddsLoaded, INTEL.oddsLoading, INTEL.oddsError) : `<span style="font-size:11px;color:var(--muted)">No key</span>`}
+        </div>
+      </div>
+      ${(!ODDS_API_KEY || INTEL.oddsError === 'INVALID_KEY') ? oddsKeySetup : ''}
+    </div>`;
+
+  // ECR table
+  let ecrTable = '';
+  if (!INTEL.ecrLoaded && !INTEL.ecrLoading) {
+    ecrTable = `<div class="empty" style="padding:24px"><div class="empty-ico">📈</div>
+      <p>Click <strong>Load Data</strong> to see the most-added players on Sleeper right now.</p></div>`;
+  } else if (INTEL.ecrLoading) {
+    ecrTable = `<div class="empty" style="padding:24px"><div class="empty-ico" style="animation:sp 1s linear infinite;display:inline-block">⟳</div><p>Fetching trending players…</p></div>`;
+  } else if (INTEL.ecrError) {
+    ecrTable = `<div class="alert" style="background:#2d1515;border-color:var(--red);color:#fca5a5;border-radius:8px;padding:12px;margin-bottom:8px">
+      <strong>ECR Error:</strong> ${esc(INTEL.ecrError)}</div>`;
+  } else if (filtered.length) {
+    ecrTable = `
+      <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border);text-align:left">
+            <th style="padding:7px 10px;color:var(--muted);font-weight:700;width:40px">#</th>
+            <th style="padding:7px 10px;color:var(--muted);font-weight:700">Player</th>
+            <th style="padding:7px 10px;color:var(--muted);font-weight:700;width:50px">Pos</th>
+            <th style="padding:7px 10px;color:var(--muted);font-weight:700;width:70px" title="Sleeper adds in the last 24 hours">➕ Adds</th>
+            <th style="padding:7px 10px;color:var(--muted);font-weight:700;width:70px" title="Sleeper drops in the last 24 hours">➖ Drops</th>
+            <th style="padding:7px 10px;color:var(--muted);font-weight:700;width:70px">My Rank</th>
+            <th style="padding:7px 10px;color:var(--muted);font-weight:700;width:80px">Proj Pts</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filtered.map((e, idx) => {
+            const myEntry = myRankLookup[normalizeName(e.name)];
+            const myRank  = myEntry ? myEntry.rank : null;
+            // Project points using the Sleeper player_id stored in trending entry
+            const proj = (() => {
+              if (!INTEL.projLoaded) return '';
+              const pid = e.pid;
+              if (pid && INTEL.projections[pid]) {
+                const pts = INTEL.projections[pid].ppr ?? INTEL.projections[pid].half_ppr;
+                return pts != null ? pts.toFixed(1) : '—';
+              }
+              // Fallback: match by name in our teams
+              const tp = allPlayers.find(pl => normalizeName(pl.name) === normalizeName(e.name));
+              if (tp && INTEL.projections[tp.id]) {
+                const pts = INTEL.projections[tp.id].ppr ?? INTEL.projections[tp.id].half_ppr;
+                return pts != null ? pts.toFixed(1) : '—';
+              }
+              return '—';
+            })();
+            const addColor  = e.addCount  > 5000 ? '#86efac' : e.addCount  > 1000 ? '#fcd34d' : 'var(--text)';
+            const dropColor = e.dropCount > 2000 ? '#f87171' : e.dropCount > 500  ? '#fcd34d' : 'var(--muted)';
+            return `<tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:7px 10px;font-weight:800;color:var(--muted)">${idx+1}</td>
+              <td style="padding:7px 10px">
+                <div style="font-weight:600;color:var(--text)">${esc(e.name)}</div>
+                <div style="font-size:11px;color:var(--muted)">${esc(e.team||'')}</div>
+              </td>
+              <td style="padding:7px 10px"><span class="pb pb-${esc(e.pos||'')}">${esc(e.pos||'')}</span></td>
+              <td style="padding:7px 10px;font-weight:700;color:${addColor}">${e.addCount?.toLocaleString() ?? '—'}</td>
+              <td style="padding:7px 10px;font-weight:600;color:${dropColor}">${e.dropCount > 0 ? e.dropCount.toLocaleString() : '—'}</td>
+              <td style="padding:7px 10px;color:var(--text);font-weight:600">${myRank != null ? `<span style="color:var(--gold)">#${myRank}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
+              <td style="padding:7px 10px;color:var(--gbright);font-weight:600">${proj || '—'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+      </div>`;
+  }
+
+  // Vegas futures table
+  let oddsSection = '';
+  if (INTEL.oddsLoaded && INTEL.odds.length) {
+    const futures = {};
+    INTEL.odds.forEach(o => {
+      if (!futures[o.market]) futures[o.market] = [];
+      // Only add if not already from same bookmaker for this player
+      if (!futures[o.market].find(x => x.player === o.player && x.bookmaker === o.bookmaker)) {
+        futures[o.market].push(o);
+      }
+    });
+    oddsSection = Object.entries(futures).map(([mkt, rows]) => {
+      const label = mkt.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+      const sorted = rows.slice().sort((a,b) => a.price - b.price);
+      return `<div class="card" style="margin-top:14px">
+        <div class="card-hd"><div class="card-title">🎰 ${esc(label)}</div></div>
+        <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr style="border-bottom:2px solid var(--border)">
+            <th style="padding:6px 10px;color:var(--muted);text-align:left">Player</th>
+            <th style="padding:6px 10px;color:var(--muted);text-align:left">Odds</th>
+            <th style="padding:6px 10px;color:var(--muted);text-align:left">Book</th>
+          </tr></thead>
+          <tbody>${sorted.slice(0,15).map(o=>`
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:6px 10px;font-weight:600">${esc(o.player)}</td>
+              <td style="padding:6px 10px;color:${o.price<0?'#86efac':'#fcd34d'};font-weight:700">${o.price>0?'+':''}${o.price}</td>
+              <td style="padding:6px 10px;color:var(--muted)">${esc(o.bookmaker)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table></div>
+      </div>`;
+    }).join('');
+  } else if (INTEL.oddsLoaded && !INTEL.odds.length) {
+    oddsSection = `<div class="alert alert-info" style="margin-top:14px">No Vegas futures data available right now. This is often off-season — try again during the NFL season.</div>`;
+  }
+
+  // ── Waiver Wire Intelligence ──────────────────────────
+  let waiverSection = '';
+  if (INTEL.ecrLoaded && ecrEntries.length) {
+    // Build set of player names already rostered in this league
+    const rosteredNames = new Set(
+      S.teams.flatMap(t => (t.players || []).map(p => normalizeName(p.name)))
+    );
+    // Find trending players NOT on any roster → available waiver targets
+    const available = ecrEntries.filter(e => !rosteredNames.has(normalizeName(e.name)));
+
+    // My team's needs from assessment
+    const myTeam = S.teams.find(t => t.isMyTeam);
+    const myNeeds = (myTeam && S.myAssessment && S.myAssessment[myTeam.id])
+      ? (S.myAssessment[myTeam.id].needs || [])
+      : [];
+
+    // Priority: available players whose position matches a team need come first
+    const prioritized = [
+      ...available.filter(e => myNeeds.includes(e.pos)),
+      ...available.filter(e => !myNeeds.includes(e.pos)),
+    ];
+
+    if (prioritized.length === 0) {
+      waiverSection = `<div class="card" style="margin-top:14px">
+        <div class="card-hd"><div class="card-title">🏈 Waiver Wire Intelligence</div></div>
+        <div class="empty" style="padding:20px"><div class="empty-ico">✅</div>
+          <p>All top trending players are already rostered in your league. Check back after the next news cycle.</p>
+        </div>
+      </div>`;
+    } else {
+      const top = prioritized.slice(0, 20);
+      waiverSection = `<div class="card" style="margin-top:14px">
+        <div class="card-hd">
+          <div>
+            <div class="card-title">🏈 Waiver Wire Intelligence</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">
+              Trending players NOT on any roster in your league
+              ${myNeeds.length ? `· <span style="color:var(--gold)">⭐ = matches your team need (${myNeeds.join(', ')})</span>` : ''}
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--muted)">${available.length} available</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${top.map(e => {
+            const isNeed  = myNeeds.includes(e.pos);
+            const projPts = (() => {
+              if (!INTEL.projLoaded) return null;
+              if (e.pid && INTEL.projections[e.pid]) {
+                const pts = INTEL.projections[e.pid].ppr ?? INTEL.projections[e.pid].half_ppr;
+                return pts != null ? pts.toFixed(1) : null;
+              }
+              return null;
+            })();
+            return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;
+              background:${isNeed ? '#1a2f1a' : 'var(--bg3)'};
+              border:1px solid ${isNeed ? '#22c55e' : 'var(--border)'};border-radius:7px">
+              <span class="pb pb-${esc(e.pos||'')}" style="flex-shrink:0">${esc(e.pos||'')}</span>
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:600;font-size:13px;color:var(--text)">
+                  ${isNeed ? '⭐ ' : ''}${esc(e.name)}
+                  ${e.team ? `<span style="font-size:11px;color:var(--muted);font-weight:400"> · ${esc(e.team)}</span>` : ''}
+                </div>
+              </div>
+              <div style="text-align:right;flex-shrink:0">
+                <div style="font-size:12px;color:#86efac;font-weight:700">+${e.addCount?.toLocaleString()}</div>
+                <div style="font-size:10px;color:var(--muted)">adds/24h</div>
+              </div>
+              ${projPts ? `<div style="text-align:right;flex-shrink:0;min-width:48px">
+                <div style="font-size:13px;color:var(--gbright);font-weight:700">${projPts}</div>
+                <div style="font-size:10px;color:var(--muted)">proj pts</div>
+              </div>` : ''}
+            </div>`;
+          }).join('')}
+        </div>
+        ${available.length > 20 ? `<div style="text-align:center;padding:10px 0 2px;font-size:12px;color:var(--muted)">${available.length - 20} more available players not shown</div>` : ''}
+      </div>`;
+    }
+  }
+
+  return `<div class="page">
+    <div class="page-hd">
+      <div><div class="page-title">📊 Player Intel</div>
+      <div class="page-sub">Waiver wire, trending adds, projections &amp; Vegas lines</div></div>
+    </div>
+
+    ${controls}
+    ${sourceBar}
+
+    ${waiverSection}
+
+    <div class="card" style="margin-top:14px">
+      <div class="card-hd">
+        <div class="card-title">📈 Sleeper Community Trending (last 24h)</div>
+        <div style="font-size:12px;color:var(--muted)">Most-added across all Sleeper leagues · your rank shown if ranked</div>
+      </div>
+      ${ecrTable}
+    </div>
+
+    ${oddsSection}
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════
+//  MAIN RENDER
+// ══════════════════════════════════════════════════
+// (removed duplicate comment below)
+// ══════════════════════════════════════════════════
+
+function render() {
+  const content =
+    U.tab==='myteam'      ? renderMyTeam()      :
+    U.tab==='gmboard'     ? renderGMBoard()     :
+    U.tab==='tradefinder' ? renderTradeFinder() :
+    U.tab==='intel'       ? renderIntel()       :
+                            renderImport();
+
+  document.getElementById('root').innerHTML = renderNav() + content + renderModal();
+
+  if (U.modal === 'addplayer') {
+    setTimeout(() => { const el=document.getElementById('ap-name'); if(el) el.focus(); }, 20);
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  DRAG AND DROP
+// ══════════════════════════════════════════════════
+
+let drag = null;
+
+document.addEventListener('dragstart', e => {
+  const row = e.target.closest('[data-pr]');
+  if (!row) return;
+  drag = {key:row.dataset.key, tid:row.dataset.tid, pos:row.dataset.pos, idx:parseInt(row.dataset.idx)};
+  setTimeout(() => row.classList.add('dragging'), 0);
+});
+document.addEventListener('dragover', e => {
+  const row = e.target.closest('[data-pr]');
+  if (!row || !drag || row.dataset.key !== drag.key) return;
+  e.preventDefault();
+  document.querySelectorAll('[data-pr].drag-over').forEach(el => el.classList.remove('drag-over'));
+  row.classList.add('drag-over');
+});
+document.addEventListener('dragleave', e => {
+  const row = e.target.closest('[data-pr]');
+  if (row) row.classList.remove('drag-over');
+});
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  const row = e.target.closest('[data-pr]');
+  if (!row || !drag || row.dataset.key !== drag.key) { drag=null; return; }
+  const toIdx = parseInt(row.dataset.idx);
+  if (toIdx !== drag.idx) {
+    const arr = getRanked(drag.tid, drag.pos);
+    const copy = [...arr];
+    const [moved] = copy.splice(drag.idx, 1);
+    copy.splice(toIdx, 0, moved);
+    saveRanking(drag.tid, drag.pos, copy.map(p => p.id));
+  }
+  drag = null; render();
+});
+document.addEventListener('dragend', () => {
+  document.querySelectorAll('[data-pr].dragging,[data-pr].drag-over').forEach(el => {
+    el.classList.remove('dragging','drag-over');
+  });
+  drag = null;
+});
+
+// ══════════════════════════════════════════════════
+//  CLICK & CHANGE DELEGATION
+// ══════════════════════════════════════════════════
+
+document.addEventListener('click', e => {
+  if (e.target && e.target.id === 'modal-overlay') { U.modal=null; render(); return; }
+
+  const btn = e.target.closest('[data-act]');
+  if (!btn) return;
+  const act = btn.dataset.act;
+
+  switch(act) {
+    case 'tab':
+      U.tab = btn.dataset.val; render(); break;
+
+    case 'intel-type':
+      INTEL.intelType = btn.dataset.val;
+      INTEL.ecrLoaded = false;
+      render(); break;
+
+    case 'intel-scoring':
+      INTEL.intelScoring = btn.dataset.val;
+      INTEL.ecrLoaded = false; INTEL.projLoaded = false;
+      render(); break;
+
+    case 'intel-load':
+      loadECR();
+      loadProjections();
+      if (ODDS_API_KEY) loadOdds();
+      break;
+
+    case 'load-odds':
+      loadOdds(); break;
+
+    case 'save-odds-key': {
+      const keyEl = document.getElementById('odds-key-input');
+      const key = keyEl ? keyEl.value.trim() : '';
+      ODDS_API_KEY = key;
+      localStorage.setItem(ODDS_KEY_STORAGE, key);
+      INTEL.oddsError = null; INTEL.oddsLoaded = false;
+      render(); break;
+    }
+
+    case 'superflex':
+      if (!S.settings) S.settings = {};
+      S.settings.superflex = !S.settings.superflex;
+      if (FB_URL) fbPut('settings/superflex', S.settings.superflex);
+      saveS(); render(); break;
+
+    case 'idpflex':
+      if (!S.settings) S.settings = {};
+      S.settings.idpFlex = !S.settings.idpFlex;
+      if (FB_URL) fbPut('settings/idpFlex', S.settings.idpFlex);
+      saveS(); render(); break;
+
+    case 'mv': {
+      const {tid,pos} = btn.dataset;
+      const i = parseInt(btn.dataset.idx), d = parseInt(btn.dataset.dir);
+      const copy = [...getRanked(tid,pos)];
+      const j = i+d;
+      if (j>=0 && j<copy.length) { [copy[i],copy[j]]=[copy[j],copy[i]]; saveRanking(tid,pos,copy.map(p=>p.id)); render(); }
+      break;
+    }
+
+    case 'del-player': {
+      const {tid,pid} = btn.dataset;
+      const team = S.teams.find(t=>t.id===tid);
+      if (team) {
+        team.players=team.players.filter(p=>p.id!==pid);
+        if (FB_URL) fbPut('teams/'+tid, team);
+        saveS(); render();
+      }
+      break;
+    }
+
+    case 'assess': {
+      const {tid,pos,slot,val} = btn.dataset;
+      setAssessment(tid, pos, slot, val);
+      render(); break;
+    }
+
+    case 'open-add':
+      U.modal='addplayer'; U.addForTeam=btn.dataset.tid; render(); break;
+
+    case 'close-modal':
+      U.modal=null; render(); break;
+
+    case 'submit-add':
+      submitAddPlayer(); break;
+
+    case 'set-my-team': {
+      const tid = btn.dataset.tid;
+      claimTeam(tid);
+      U.tab='myteam'; render(); break;
+    }
+
+    case 'fb-connect': {
+      const urlEl = document.getElementById('fb-url-input');
+      const url = urlEl && urlEl.value.trim();
+      if (!url || !url.startsWith('https://')) {
+        U.importStatus = {type:'error', msg:'Please enter a valid Firebase URL starting with https://'};
+        render(); break;
+      }
+      U.importStatus = null;
+      connectFirebase(url);
+      render(); break;
+    }
+
+    case 'fb-disconnect':
+      disconnectFirebase();
+      U.importStatus = {type:'info', msg:'Disconnected from Firebase. Data is now local only.'};
+      render(); break;
+
+    case 'fb-copy-url': {
+      // Copy just the Firebase URL — for manual sharing when running locally
+      if (!FB_URL) break;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(FB_URL).then(() => {
+          U.importStatus = {type:'success', msg:'✅ Firebase URL copied! Paste it in a message to your league. They open the app, go to ⚙️ Setup, and paste it to connect.'};
+          render();
+        }).catch(() => prompt('Copy this Firebase URL and send it to your league:', FB_URL));
+      } else {
+        prompt('Copy this Firebase URL and send it to your league:', FB_URL);
+      }
+      break;
+    }
+
+    case 'fb-copy-join': {
+      const shareUrl = leagueShareUrl();
+      if (!shareUrl) break;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          U.importStatus = {type:'success', msg:'✅ Join link copied! Share it with your league. When they open it, they\'ll connect automatically.'};
+          render();
+        }).catch(() => prompt('Copy this link and share with your league:', shareUrl));
+      } else {
+        prompt('Copy this link and share with your league:', shareUrl);
+      }
+      break;
+    }
+
+    case 'toggle-add-team':
+      U.showAddTeam=!U.showAddTeam; render(); break;
+
+    case 'add-team':
+      addTeamManual(); break;
+
+    case 'sleeper-import':
+      doSleeperImport(); break;
+
+    case 'reset':
+      if (confirm('Reset this league? Clears local teams and rankings for the current league (does not affect Firebase).')) {
+        const resetState = emptyLeagueState();
+        S = resetState;
+        MY_TEAM_ID = null;
+        saveLeagues();
+        U = {tab:'setup',gmTeam:null,tradeTeam:null,modal:null,addForTeam:null,
+             importStatus:null,importing:false,importProgress:'',showAddTeam:false,showFbSetup:false};
+        syncSelectors(); render();
+      }
+      break;
+
+    case 'switch-league-btn':
+      if (el.dataset.val) switchLeague(el.dataset.val);
+      break;
+
+    case 'add-league': {
+      const nameEl = document.getElementById('new-league-name');
+      const name = (nameEl ? nameEl.value.trim() : '') || 'New League';
+      addLeague(name);
+      break;
+    }
+
+    case 'delete-league':
+      if (LEAGUES.length <= 1) { alert('You need at least one league.'); break; }
+      if (confirm(`Delete "${(_curLeague()||{}).name}"? This cannot be undone.`)) {
+        disconnectFirebase(true);
+        LEAGUES = LEAGUES.filter(l => l.id !== CURRENT_LEAGUE_ID);
+        localStorage.setItem(LEAGUES_KEY, JSON.stringify(LEAGUES));
+        CURRENT_LEAGUE_ID = null;
+        switchLeague(LEAGUES[0].id);
+      }
+      break;
+
+    case 'rename-league': {
+      const el = document.getElementById('league-name-input');
+      const name = el ? el.value.trim() : '';
+      if (name) {
+        const idx = LEAGUES.findIndex(l => l.id === CURRENT_LEAGUE_ID);
+        if (idx >= 0) { LEAGUES[idx].name = name; saveLeagues(); render(); }
+      }
+      break;
+    }
+  }
+});
+
+document.addEventListener('change', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  if (el.dataset.act==='switch-league') { switchLeague(el.value); return; }
+  if (el.dataset.act==='gm-team')    { U.gmTeam=el.value;    render(); }
+  if (el.dataset.act==='trade-team') { U.tradeTeam=el.value; render(); }
+  if (el.dataset.act==='intel-week') {
+    INTEL.intelWeek = parseInt(el.value);
+    INTEL.projLoaded = false;
+    render();
+  }
+});
+
+document.addEventListener('input', e => {
+  if (e.target.id === 'intel-search') {
+    U.intelSearch = e.target.value;
+    render();
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape' && U.modal) { U.modal=null; render(); return; }
+  if (e.key==='Enter') {
+    const id = document.activeElement && document.activeElement.id;
+    if ((id==='ap-name'||id==='ap-age') && U.modal==='addplayer') { submitAddPlayer(); return; }
+    if (id==='sleeper-lid' && !U.importing) { doSleeperImport(); return; }
+    if (id==='add-team-name') { addTeamManual(); return; }
+    if (id==='fb-url-input') {
+      const url = document.getElementById('fb-url-input').value.trim();
+      if (url.startsWith('https://')) { U.importStatus=null; connectFirebase(url); render(); }
+      return;
+    }
+  }
+});
+
+// ══════════════════════════════════════════════════
+//  ACTION HANDLERS
+// ══════════════════════════════════════════════════
+
+function submitAddPlayer() {
+  const name = (document.getElementById('ap-name')||{}).value;
+  const pos  = (document.getElementById('ap-pos') ||{}).value;
+  const age  = parseInt((document.getElementById('ap-age')||{}).value)||0;
+  if (!name||!name.trim()||!pos) return;
+  const team = S.teams.find(t=>t.id===U.addForTeam);
+  if (!team) return;
+  team.players.push({id:'mp_'+Date.now(), name:name.trim(), pos, age, rank:9999});
+  if (FB_URL) fbPut('teams/'+team.id, team);
+  saveS(); U.modal=null; render();
+}
+
+function addTeamManual() {
+  const el = document.getElementById('add-team-name');
+  const name = el && el.value.trim();
+  if (!name) return;
+  const t = {id:'mt_'+Date.now(), name, isMyTeam:false, players:[]};
+  S.teams.push(t);
+  if (FB_URL) fbPut('teams/'+t.id, t);
+  saveS(); U.showAddTeam=false; render();
+}
+
+async function doSleeperImport() {
+  const lidEl = document.getElementById('sleeper-lid');
+  const lid   = lidEl && lidEl.value.trim();
+  if (!lid) { U.importStatus={type:'error',msg:'Please enter a Sleeper league ID.'}; render(); return; }
+
+  U.importing=true; U.importStatus={type:'info',msg:'Connecting…'}; U.importProgress='Fetching league info…'; render();
+
+  try {
+    const lRes = await fetch('https://api.sleeper.app/v1/league/'+lid);
+    if (!lRes.ok) throw new Error('League not found. Double-check your league ID.');
+    const league = await lRes.json();
+
+    const rosterPos = league.roster_positions || [];
+    // Auto-detect superflex
+    const sfx    = rosterPos.includes('SUPER_FLEX');
+    // Auto-detect IDP league and IDP_FLEX
+    const isIDP  = rosterPos.some(p => IDP_POSITIONS.includes(p) || p === 'IDP_FLEX');
+    const idpFlx = rosterPos.includes('IDP_FLEX');
+    if (!S.settings) S.settings = {};
+    S.settings.superflex = !!sfx;
+    S.settings.idpFlex   = !!idpFlx;
+    S.settings.isIDP     = !!isIDP;
+
+    U.importProgress='Fetching rosters &amp; users…'; render();
+    const [rRes, uRes] = await Promise.all([
+      fetch('https://api.sleeper.app/v1/league/'+lid+'/rosters'),
+      fetch('https://api.sleeper.app/v1/league/'+lid+'/users'),
+    ]);
+    const rosters = await rRes.json();
+    const users   = await uRes.json();
+
+    U.importProgress='Loading player database (~5 sec)…'; render();
+    let allP = null;
+    try {
+      const c = localStorage.getItem('sl_players_v2');
+      if (c) { const {ts,data}=JSON.parse(c); if (Date.now()-ts<86400000) allP=data; }
+    } catch(e) {}
+    if (!allP) {
+      const pRes = await fetch('https://api.sleeper.app/v1/players/nfl');
+      allP = await pRes.json();
+      try { localStorage.setItem('sl_players_v2', JSON.stringify({ts:Date.now(),data:allP})); } catch(e) {}
+    }
+
+    U.importProgress='Building teams…'; render();
+    const userMap = {};
+    users.forEach(u => { userMap[u.user_id]=(u.metadata&&u.metadata.team_name)||u.display_name||'Team'; });
+
+    const newTeams = rosters.map((r,idx) => {
+      const name = userMap[r.owner_id]||('Team '+(idx+1));
+      const pids = (r.players||[]).concat(r.reserve||[]);
+      const players = pids.map(pid => {
+        const p = allP[pid];
+        if (!p) return null;
+        // Resolve position: use fantasy_positions[0] first, then fall back to position field
+        const rawPos   = (p.fantasy_positions && p.fantasy_positions[0]) || p.position || '';
+        const mappedPos = IDP_POS_MAP[rawPos] || IDP_POS_MAP[p.position] || rawPos;
+        if (!POSITIONS.includes(mappedPos)) return null;
+        return {id:'sl_'+pid, name:p.full_name||pid, pos:mappedPos, age:p.age||0, rank:p.search_rank||9999};
+      }).filter(Boolean);
+      return {id:'sl_'+r.roster_id, name, isMyTeam:false, players};
+    });
+
+    const sfxNote  = sfx    ? ' Superflex on.' : '';
+    const idpNote  = isIDP  ? ' IDP league detected (DL/LB/DB).' : '';
+    const flxNote  = idpFlx ? ' IDP_FLEX on — LB has 2 starter slots.' : '';
+    S.settings = {superflex:!!sfx, idpFlex:!!idpFlx, isIDP:!!isIDP};
+    S.teams = newTeams;
+    S.myRankings = {};
+    S.myAssessment = {};
+
+    // If Firebase is connected, push all teams and settings to the shared DB
+    // so every league member gets the rosters without re-importing
+    if (FB_URL) {
+      U.importProgress = 'Syncing to Firebase…'; render();
+      const teamsObj = {};
+      newTeams.forEach(t => { teamsObj[t.id] = t; });
+      await fbPut('teams', teamsObj);
+      await fbPut('settings', S.settings);
+    }
+
+    MY_TEAM_ID = null;
+    saveLeagues(); syncSelectors();
+    U.importing=false; U.importProgress='';
+    U.importStatus={type:'success',msg:`✅ Imported ${newTeams.length} teams from "${league.name}".${sfxNote}${idpNote}${flxNote}${FB_URL ? ' Teams synced to Firebase.' : ''} Click "This Is My Team" below.`};
+    render();
+
+  } catch(err) {
+    U.importing=false; U.importProgress='';
+    U.importStatus={type:'error',msg:err.message||'Import failed. Check your league ID.'};
+    render();
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════
+
+syncSelectors();
+// Auto-connect Firebase if URL saved (from prior session or join link in hash)
+if (FB_URL) {
+  connectFirebase(FB_URL); // connectFirebase calls render() when data arrives
+} else {
+  render();
+}
+
+</script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
