@@ -606,6 +606,7 @@ let U = {
   sleeperFoundLeagues: null,   // [{league_id, name, season, roster_positions, total_rosters}]
   sleeperSelectedIds: null,    // Set of league_ids chosen by user
   sleeperLookingUp: false,
+  sleeperUserId: null,         // Sleeper user_id for auto-claiming team
 };
 
 // ══════════════════════════════════════════════════
@@ -2405,6 +2406,7 @@ async function doSleeperLookup() {
       U.sleeperLookingUp = false; render(); return;
     }
 
+    U.sleeperUserId = user.user_id;
     U.sleeperFoundLeagues = leagues.map(l => ({
       league_id: l.league_id,
       name: l.name || 'Unnamed League',
@@ -2460,6 +2462,7 @@ async function doSleeperImportSelected() {
 
       const newTeams = rosters.map((r,idx) => {
         const name = userMap[r.owner_id]||('Team '+(idx+1));
+        const isMyTeam = !!(U.sleeperUserId && r.owner_id === U.sleeperUserId);
         const pids = (r.players||[]).concat(r.reserve||[]);
         const players = pids.map(pid => {
           const p = allP[pid];
@@ -2469,8 +2472,10 @@ async function doSleeperImportSelected() {
           if (!POSITIONS.includes(mappedPos)) return null;
           return {id:'sl_'+pid, name:p.full_name||pid, pos:mappedPos, age:p.age||0, rank:p.search_rank||9999};
         }).filter(Boolean);
-        return {id:'sl_'+r.roster_id, name, isMyTeam:false, players};
+        return {id:'sl_'+r.roster_id, name, isMyTeam, players};
       });
+
+      const myTeam = newTeams.find(t => t.isMyTeam);
 
       // Find or create the LEAGUES entry for this league
       let existingIdx = LEAGUES.findIndex(l => l.sleeperLeagueId === lg.league_id);
@@ -2482,8 +2487,9 @@ async function doSleeperImportSelected() {
       const leagueState = { ...emptyLeagueState(),
         teams: newTeams,
         settings: {superflex:!!sfx, idpFlex:!!idpFlx, isIDP:!!isIDP},
+        myTeamId: myTeam ? myTeam.id : null,
       };
-      LEAGUES[existingIdx] = { ...LEAGUES[existingIdx], ...leagueState };
+      LEAGUES[existingIdx] = { ...LEAGUES[existingIdx], ...leagueState, myTeamId: myTeam ? myTeam.id : null };
       imported++;
     } catch(e) {
       console.warn('Failed to import league', lg.league_id, e);
