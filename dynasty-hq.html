@@ -2462,8 +2462,9 @@ async function doSleeperImportSelected() {
 
       const newTeams = rosters.map((r,idx) => {
         const name = userMap[r.owner_id]||('Team '+(idx+1));
-        const isMyTeam = !!(U.sleeperUserId && r.owner_id === U.sleeperUserId);
-        const pids = (r.players||[]).concat(r.reserve||[]);
+        const owners = [r.owner_id, ...(r.co_owners||[])].filter(Boolean);
+        const isMyTeam = !!(U.sleeperUserId && owners.includes(U.sleeperUserId));
+        const pids = [...new Set(r.players||[])];
         const players = pids.map(pid => {
           const p = allP[pid];
           if (!p) return null;
