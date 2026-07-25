@@ -2464,14 +2464,18 @@ async function doSleeperImportSelected() {
         const name = userMap[r.owner_id]||('Team '+(idx+1));
         const owners = [r.owner_id, ...(r.co_owners||[])].filter(Boolean);
         const isMyTeam = !!(U.sleeperUserId && owners.includes(U.sleeperUserId));
-        const pids = [...new Set([...(r.players||[]), ...(r.reserve||[])])];
+        const pids = [...new Set([...(r.players||[]), ...(r.reserve||[]), ...(r.taxi||[])])];
+        const seenNames = new Set();
         const players = pids.map(pid => {
           const p = allP[pid];
           if (!p) return null;
           const rawPos    = (p.fantasy_positions&&p.fantasy_positions[0])||p.position||'';
           const mappedPos = IDP_POS_MAP[rawPos]||IDP_POS_MAP[p.position]||rawPos;
           if (!POSITIONS.includes(mappedPos)) return null;
-          return {id:'sl_'+pid, name:p.full_name||pid, pos:mappedPos, age:p.age||0, rank:p.search_rank||9999};
+          const name = p.full_name||pid;
+          if (seenNames.has(name)) return null;
+          seenNames.add(name);
+          return {id:'sl_'+pid, name, pos:mappedPos, age:p.age||0, rank:p.search_rank||9999};
         }).filter(Boolean);
         players.sort((a,b) => a.rank - b.rank);
         return {id:'sl_'+r.roster_id, name, isMyTeam, players};
