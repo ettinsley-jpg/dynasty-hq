@@ -15,31 +15,32 @@
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     :root{
-      --bg:#07100a;--bg2:#0e1a10;--bg3:#152017;--card:#192319;
-      --border:#253525;--gbright:#22c55e;--gold:#f59e0b;--gold-dk:#7a4f06;
-      --text:#dff0df;--muted:#6b8f6b;--red:#ef4444;--blue:#60a5fa;
+      --bg:#080c14;--bg2:#0d1220;--bg3:#111827;--card:#111827;
+      --border:#1e2d45;--gbright:#22c55e;--gold:#f59e0b;--gold-dk:#5c3a05;
+      --text:#e2e8f0;--muted:#64748b;--red:#ef4444;--blue:#60a5fa;
+      --purple:#a78bfa;--teal:#2dd4bf;
     }
     body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
 
     /* Nav */
-    .nav{background:#080f09;border-bottom:2px solid var(--gold);position:sticky;top:0;z-index:100}
-    .nav-inner{max-width:960px;margin:0 auto;display:flex;align-items:stretch;overflow-x:auto}
-    .nav-logo{padding:13px 16px;font-weight:900;font-size:17px;color:var(--gold);white-space:nowrap;letter-spacing:-.5px}
+    .nav{background:rgba(8,12,20,.95);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;backdrop-filter:blur(12px)}
+    .nav-inner{max-width:1100px;margin:0 auto;display:flex;align-items:stretch;overflow-x:auto}
+    .nav-logo{padding:13px 18px;font-weight:900;font-size:18px;color:var(--gold);white-space:nowrap;letter-spacing:-.5px;display:flex;align-items:center;gap:8px}
     .nav-logo span{color:var(--gbright)}
-    .nav-tab{padding:13px 14px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--muted);white-space:nowrap;border-bottom:3px solid transparent;transition:.2s}
-    .nav-tab:hover{color:var(--text);background:var(--bg3)}
+    .nav-tab{padding:13px 15px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--muted);white-space:nowrap;border-bottom:2px solid transparent;transition:.15s;letter-spacing:.02em}
+    .nav-tab:hover{color:var(--text)}
     .nav-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
 
     /* Layout */
-    .page{max-width:960px;margin:0 auto;padding:20px 16px}
-    .page-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:12px;flex-wrap:wrap}
-    .page-title{font-size:22px;font-weight:800;margin-bottom:2px}
+    .page{max-width:1100px;margin:0 auto;padding:24px 18px}
+    .page-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;gap:12px;flex-wrap:wrap}
+    .page-title{font-size:24px;font-weight:800;margin-bottom:3px;letter-spacing:-.5px}
     .page-sub{color:var(--muted);font-size:13px}
 
     /* Cards */
-    .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px}
-    .card-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:8px}
-    .card-title{font-weight:700;font-size:15px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+    .card-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:8px}
+    .card-title{font-weight:700;font-size:15px;letter-spacing:.01em}
 
     /* Position badges */
     .pb{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:800;letter-spacing:.05em;flex-shrink:0}
@@ -454,38 +455,53 @@ function resolveSleeperPlayer(pid) {
 }
 
 async function loadECR() {
-  // "ECR" here = Sleeper Community Trending (publicly available, no CORS issues)
   if (INTEL.ecrLoading) return;
   INTEL.ecrLoading = true; INTEL.ecrError = null; render();
   try {
-    const hours = 24;
-    const limit = 50;
-    const [addRes, dropRes] = await Promise.all([
-      fetch(`https://api.sleeper.app/v1/players/nfl/trending/add?lookback_hours=${hours}&limit=${limit}`),
-      fetch(`https://api.sleeper.app/v1/players/nfl/trending/drop?lookback_hours=${hours}&limit=${limit}`),
-    ]);
-    if (!addRes.ok || !dropRes.ok) throw new Error('Sleeper trending API unavailable');
-    const adds  = await addRes.json();
-    const drops = await dropRes.json();
+    // Primary: FantasyPros ECR from Netlify serverless function
+    const ecrRes = await fetch(`/.netlify/functions/ecr?type=${INTEL.intelType}&scoring=${INTEL.intelScoring}`);
+    if (!ecrRes.ok) throw new Error(`ECR service returned ${ecrRes.status}`);
+    const ecrData = await ecrRes.json();
+    if (ecrData.error) throw new Error(ecrData.error);
+    if (!Array.isArray(ecrData) || !ecrData.length) throw new Error('No ECR data returned');
 
-    // Build drop lookup
-    const dropMap = {};
-    drops.forEach(d => { dropMap[d.player_id] = d.count; });
+    // Secondary: Sleeper trending for add/drop signal (best-effort)
+    const addMap = {}, dropMap = {};
+    try {
+      const [addRes, dropRes] = await Promise.all([
+        fetch(`https://api.sleeper.app/v1/players/nfl/trending/add?lookback_hours=24&limit=200`),
+        fetch(`https://api.sleeper.app/v1/players/nfl/trending/drop?lookback_hours=24&limit=200`),
+      ]);
+      if (addRes.ok) {
+        const adds = await addRes.json();
+        adds.forEach(d => {
+          const p = resolveSleeperPlayer(d.player_id);
+          if (p) addMap[normalizeName(`${p.first_name||''} ${p.last_name||''}`)] = d.count;
+        });
+      }
+      if (dropRes.ok) {
+        const drops = await dropRes.json();
+        drops.forEach(d => {
+          const p = resolveSleeperPlayer(d.player_id);
+          if (p) dropMap[normalizeName(`${p.first_name||''} ${p.last_name||''}`)] = d.count;
+        });
+      }
+    } catch(e) { /* trending is optional */ }
 
     INTEL.ecr = {};
-    adds.forEach((entry, i) => {
-      const pid = entry.player_id;
-      const p   = resolveSleeperPlayer(pid);
-      const name = p ? `${p.first_name || ''} ${p.last_name || ''}`.trim() : pid;
-      const pos  = p ? (p.fantasy_positions?.[0] || p.position || '') : '';
-      const team = p ? (p.team || '') : '';
-      const key  = normalizeName(name) || pid;
+    ecrData.forEach(p => {
+      const key = normalizeName(p.name);
       INTEL.ecr[key] = {
-        fpRank: i + 1,         // rank by add volume
-        addCount: entry.count,
-        dropCount: dropMap[pid] || 0,
-        uncertainty: null,
-        name, team, pos, pid,
+        fpRank: p.rank,
+        rankBest: p.rankBest,
+        rankWorst: p.rankWorst,
+        uncertainty: p.uncertainty,
+        name: p.name,
+        team: p.team,
+        pos: p.pos,
+        pid: null,
+        addCount: addMap[key] || 0,
+        dropCount: dropMap[key] || 0,
       };
     });
     INTEL.ecrLoaded = true;
@@ -1139,8 +1155,9 @@ function renderNav() {
        </div>`
     : `<div style="display:flex;align-items:center;padding:0 12px;font-size:12px;font-weight:600;color:var(--muted);border-left:1px solid var(--border);flex-shrink:0;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis">${esc(curLeagueName)}</div>`;
   return `<nav class="nav"><div class="nav-inner">
-    <div class="nav-logo" style="display:flex;align-items:center;flex-shrink:0">🏈 Dynasty<span>HQ</span>${syncDot}</div>
+    <div class="nav-logo" style="flex-shrink:0">🏈 Dynasty<span>HQ</span>${syncDot}</div>
     ${leagueSelector}
+    <div style="flex:1"></div>
     ${tabs.map(t=>`<button class="nav-tab${U.tab===t.id?' active':''}" data-act="tab" data-val="${t.id}">${t.label}</button>`).join('')}
   </div></nav>`;
 }
@@ -1676,8 +1693,8 @@ function renderIntel() {
     <div style="padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:14px">
       <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;margin-bottom:${!ODDS_API_KEY || INTEL.oddsError === 'INVALID_KEY' ? '0' : '0'}">
         <div style="display:flex;align-items:center;gap:6px">
-          <strong>Sleeper Trending</strong> ${statusBadge(INTEL.ecrLoaded, INTEL.ecrLoading, INTEL.ecrError)}
-          ${INTEL.ecrError && INTEL.ecrError !== 'NO_KEY' ? `<span style="font-size:11px;color:var(--muted)"title="${esc(INTEL.ecrError)}">ⓘ</span>` : ''}
+          <strong>FantasyPros ECR</strong> ${statusBadge(INTEL.ecrLoaded, INTEL.ecrLoading, INTEL.ecrError)}
+          ${INTEL.ecrError && INTEL.ecrError !== 'NO_KEY' ? `<span style="font-size:11px;color:var(--muted)" title="${esc(INTEL.ecrError)}">ⓘ</span>` : ''}
         </div>
         <div style="display:flex;align-items:center;gap:6px">
           <strong>Sleeper Projections</strong> ${statusBadge(INTEL.projLoaded, INTEL.projLoading, INTEL.projError)}
@@ -1693,41 +1710,43 @@ function renderIntel() {
   // ECR table
   let ecrTable = '';
   if (!INTEL.ecrLoaded && !INTEL.ecrLoading) {
-    ecrTable = `<div class="empty" style="padding:24px"><div class="empty-ico">📈</div>
-      <p>Click <strong>Load Data</strong> to see the most-added players on Sleeper right now.</p></div>`;
+    ecrTable = `<div class="empty" style="padding:32px"><div class="empty-ico">📈</div>
+      <p style="color:var(--muted)">Click <strong style="color:var(--text)">Load Data</strong> to fetch FantasyPros Expert Consensus Rankings with uncertainty scores.</p></div>`;
   } else if (INTEL.ecrLoading) {
-    ecrTable = `<div class="empty" style="padding:24px"><div class="empty-ico" style="animation:sp 1s linear infinite;display:inline-block">⟳</div><p>Fetching trending players…</p></div>`;
+    ecrTable = `<div class="empty" style="padding:32px"><div class="spin" style="width:28px;height:28px;margin:0 auto 12px"></div><p style="color:var(--muted)">Fetching FantasyPros ECR…</p></div>`;
   } else if (INTEL.ecrError) {
-    ecrTable = `<div class="alert" style="background:#2d1515;border-color:var(--red);color:#fca5a5;border-radius:8px;padding:12px;margin-bottom:8px">
-      <strong>ECR Error:</strong> ${esc(INTEL.ecrError)}</div>`;
+    ecrTable = `<div class="alert alert-error"><strong>ECR Error:</strong> ${esc(INTEL.ecrError)}</div>`;
   } else if (filtered.length) {
+    // Identify players where my rank differs significantly from ECR (edge finder)
+    const hasMyRankings = Object.values(myRankLookup).length > 0;
     ecrTable = `
       <div style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;font-size:13px">
         <thead>
-          <tr style="border-bottom:2px solid var(--border);text-align:left">
-            <th style="padding:7px 10px;color:var(--muted);font-weight:700;width:40px">#</th>
-            <th style="padding:7px 10px;color:var(--muted);font-weight:700">Player</th>
-            <th style="padding:7px 10px;color:var(--muted);font-weight:700;width:50px">Pos</th>
-            <th style="padding:7px 10px;color:var(--muted);font-weight:700;width:70px" title="Sleeper adds in the last 24 hours">➕ Adds</th>
-            <th style="padding:7px 10px;color:var(--muted);font-weight:700;width:70px" title="Sleeper drops in the last 24 hours">➖ Drops</th>
-            <th style="padding:7px 10px;color:var(--muted);font-weight:700;width:70px">My Rank</th>
-            <th style="padding:7px 10px;color:var(--muted);font-weight:700;width:80px">Proj Pts</th>
+          <tr style="border-bottom:1px solid var(--border);text-align:left;background:var(--bg2)">
+            <th style="padding:8px 10px;color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em;width:42px">ECR</th>
+            <th style="padding:8px 10px;color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em">Player</th>
+            <th style="padding:8px 10px;color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em;width:48px">Pos</th>
+            <th style="padding:8px 10px;color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em;width:90px" title="Best-case to worst-case expert rank range">Range</th>
+            <th style="padding:8px 10px;color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em;width:80px" title="Standard deviation of expert ranks — higher = more disagreement = more potential edge">Uncertainty</th>
+            ${hasMyRankings ? `<th style="padding:8px 10px;color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em;width:70px">My Rank</th>
+            <th style="padding:8px 10px;color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em;width:60px" title="Your rank vs ECR consensus — positive means you like them more than the experts">Edge</th>` : ''}
+            <th style="padding:8px 10px;color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em;width:70px">Trending</th>
+            <th style="padding:8px 10px;color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em;width:70px">Proj</th>
           </tr>
         </thead>
         <tbody>
           ${filtered.map((e, idx) => {
             const myEntry = myRankLookup[normalizeName(e.name)];
             const myRank  = myEntry ? myEntry.rank : null;
-            // Project points using the Sleeper player_id stored in trending entry
+
+            // Edge: how many spots higher/lower you rank them vs ECR
+            const edge = (myRank != null && e.fpRank != null)
+              ? e.fpRank - myRank   // positive = you like them more than ECR
+              : null;
+
             const proj = (() => {
               if (!INTEL.projLoaded) return '';
-              const pid = e.pid;
-              if (pid && INTEL.projections[pid]) {
-                const pts = INTEL.projections[pid].ppr ?? INTEL.projections[pid].half_ppr;
-                return pts != null ? pts.toFixed(1) : '—';
-              }
-              // Fallback: match by name in our teams
               const tp = allPlayers.find(pl => normalizeName(pl.name) === normalizeName(e.name));
               if (tp && INTEL.projections[tp.id]) {
                 const pts = INTEL.projections[tp.id].ppr ?? INTEL.projections[tp.id].half_ppr;
@@ -1735,19 +1754,37 @@ function renderIntel() {
               }
               return '—';
             })();
-            const addColor  = e.addCount  > 5000 ? '#86efac' : e.addCount  > 1000 ? '#fcd34d' : 'var(--text)';
-            const dropColor = e.dropCount > 2000 ? '#f87171' : e.dropCount > 500  ? '#fcd34d' : 'var(--muted)';
-            return `<tr style="border-bottom:1px solid var(--border)">
-              <td style="padding:7px 10px;font-weight:800;color:var(--muted)">${idx+1}</td>
-              <td style="padding:7px 10px">
-                <div style="font-weight:600;color:var(--text)">${esc(e.name)}</div>
-                <div style="font-size:11px;color:var(--muted)">${esc(e.team||'')}</div>
+
+            // Uncertainty color: high = opportunity
+            const unc = e.uncertainty;
+            const uncColor = unc == null ? 'var(--muted)' : unc >= 8 ? '#f87171' : unc >= 4 ? '#fcd34d' : '#86efac';
+            const uncLabel = unc == null ? '—' : unc >= 8 ? `🔴 ${unc}` : unc >= 4 ? `🟡 ${unc}` : `🟢 ${unc}`;
+
+            // Edge color
+            const edgeColor = edge == null ? 'var(--muted)' : edge > 5 ? '#86efac' : edge < -5 ? '#f87171' : 'var(--text)';
+            const edgeLabel = edge == null ? '—' : (edge > 0 ? `+${edge}` : `${edge}`);
+
+            const trendColor = e.addCount > 5000 ? '#86efac' : e.addCount > 1000 ? '#fcd34d' : 'var(--muted)';
+            const trendLabel = e.addCount > 0 ? `+${(e.addCount/1000).toFixed(0)}k` : '—';
+
+            const isHighlight = edge != null && edge >= 5;
+            const rowBg = isHighlight ? 'background:rgba(34,197,94,.05)' : '';
+
+            return `<tr style="border-bottom:1px solid var(--border);${rowBg}transition:.1s">
+              <td style="padding:8px 10px;font-weight:800;color:${e.fpRank<=10?'var(--gold)':'var(--muted)'}">${e.fpRank}</td>
+              <td style="padding:8px 10px">
+                <div style="font-weight:600;color:var(--text)">${esc(e.name)}${isHighlight?'<span style="margin-left:6px;font-size:10px;background:#14342a;color:#86efac;padding:1px 6px;border-radius:3px;font-weight:700">VALUE</span>':''}</div>
+                <div style="font-size:11px;color:var(--muted)">${esc(e.team||'FA')}</div>
               </td>
-              <td style="padding:7px 10px"><span class="pb pb-${esc(e.pos||'')}">${esc(e.pos||'')}</span></td>
-              <td style="padding:7px 10px;font-weight:700;color:${addColor}">${e.addCount?.toLocaleString() ?? '—'}</td>
-              <td style="padding:7px 10px;font-weight:600;color:${dropColor}">${e.dropCount > 0 ? e.dropCount.toLocaleString() : '—'}</td>
-              <td style="padding:7px 10px;color:var(--text);font-weight:600">${myRank != null ? `<span style="color:var(--gold)">#${myRank}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
-              <td style="padding:7px 10px;color:var(--gbright);font-weight:600">${proj || '—'}</td>
+              <td style="padding:8px 10px"><span class="pb pb-${esc(e.pos||'')}">${esc(e.pos||'')}</span></td>
+              <td style="padding:8px 10px;font-size:12px;color:var(--muted)">
+                ${e.rankBest!=null && e.rankWorst!=null ? `${e.rankBest}–${e.rankWorst}` : '—'}
+              </td>
+              <td style="padding:8px 10px;font-weight:700;color:${uncColor}">${uncLabel}</td>
+              ${hasMyRankings ? `<td style="padding:8px 10px;font-weight:600">${myRank!=null?`<span style="color:var(--gold)">#${myRank}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
+              <td style="padding:8px 10px;font-weight:700;color:${edgeColor}">${edgeLabel}</td>` : ''}
+              <td style="padding:8px 10px;font-weight:600;color:${trendColor}">${trendLabel}</td>
+              <td style="padding:8px 10px;color:var(--gbright);font-weight:600">${proj || '—'}</td>
             </tr>`;
           }).join('')}
         </tbody>
@@ -1883,8 +1920,14 @@ function renderIntel() {
 
     <div class="card" style="margin-top:14px">
       <div class="card-hd">
-        <div class="card-title">📈 Sleeper Community Trending (last 24h)</div>
-        <div style="font-size:12px;color:var(--muted)">Most-added across all Sleeper leagues · your rank shown if ranked</div>
+        <div>
+          <div class="card-title">📊 FantasyPros Expert Consensus Rankings</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px">
+            ${INTEL.intelType==='dynasty'?'Dynasty':'Rest-of-Season'} · ${INTEL.intelScoring==='half-ppr'?'Half PPR':INTEL.intelScoring==='standard'?'Standard':'PPR'}
+            · Uncertainty = expert disagreement · Edge = your rank vs consensus
+          </div>
+        </div>
+        ${INTEL.ecrLoaded ? `<div style="font-size:12px;color:var(--muted)">${Object.keys(INTEL.ecr).length} players</div>` : ''}
       </div>
       ${ecrTable}
     </div>
