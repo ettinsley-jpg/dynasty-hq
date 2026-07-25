@@ -250,6 +250,45 @@
     .desk-alert-from{font-size:11px;font-weight:700;color:var(--gold);margin-bottom:4px}
     .desk-alert-msg{font-size:13px;color:var(--text);line-height:1.45}
     .desk-alert-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+
+    /* Hired staff cards on desk */
+    .staff-cards{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start}
+    .staff-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:14px;display:flex;gap:12px;align-items:flex-start;flex:1;min-width:200px;max-width:280px;cursor:pointer;transition:.15s}
+    .staff-card:hover{border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.04)}
+    .staff-card-avatar{width:44px;height:44px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid rgba(255,255,255,.12)}
+    .staff-card-avatar img{width:100%;height:100%;display:block}
+    .staff-card-body{flex:1;min-width:0}
+    .staff-card-name{font-weight:700;font-size:13px;color:var(--text)}
+    .staff-card-role{font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.06em;margin:2px 0 4px}
+    .staff-card-trait{font-size:11px;color:var(--muted);line-height:1.4}
+    .staff-card-xp{display:flex;align-items:center;gap:6px;margin-top:6px}
+    .xp-bar{flex:1;height:3px;background:rgba(255,255,255,.1);border-radius:99px;overflow:hidden}
+    .xp-fill{height:100%;background:var(--gold);border-radius:99px;transition:.4s}
+    .xp-label{font-size:10px;color:var(--muted)}
+    .staff-add-slot{background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.1);border-radius:12px;padding:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;flex:1;min-width:160px;max-width:220px;cursor:pointer;transition:.15s;min-height:84px;color:var(--muted);font-size:13px}
+    .staff-add-slot:hover{border-color:var(--gold);color:var(--gold);background:rgba(245,158,11,.03)}
+
+    /* Hiring modal */
+    .hire-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:400;display:flex;align-items:center;justify-content:center;padding:20px}
+    .hire-modal{background:#0d1220;border:1px solid var(--border);border-radius:16px;max-width:680px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.7)}
+    .hire-modal-hd{padding:20px 24px 0;border-bottom:1px solid var(--border);margin-bottom:20px}
+    .hire-modal-title{font-size:18px;font-weight:800;margin-bottom:4px}
+    .hire-modal-sub{font-size:13px;color:var(--muted);padding-bottom:16px}
+    .hire-role-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px;overflow-x:auto}
+    .hire-role-tab{padding:10px 16px;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted);border:none;background:none;border-bottom:2px solid transparent;white-space:nowrap;transition:.15s}
+    .hire-role-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+    .hire-candidates{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;padding:0 24px 24px}
+    .hire-candidate{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;gap:14px;align-items:flex-start;cursor:pointer;transition:.15s}
+    .hire-candidate:hover{border-color:var(--gold);background:rgba(245,158,11,.05);transform:translateY(-1px)}
+    .hire-candidate-avatar{width:52px;height:52px;border-radius:50%;overflow:hidden;border:2px solid rgba(255,255,255,.15);flex-shrink:0;background:var(--bg2)}
+    .hire-candidate-avatar img{width:100%;height:100%;display:block}
+    .hire-candidate-name{font-weight:700;font-size:14px}
+    .hire-candidate-role{font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.06em;margin:3px 0}
+    .hire-candidate-trait{font-size:12px;color:var(--muted);line-height:1.45;margin-top:4px}
+    .hire-candidate-tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;border:1px solid;margin-top:6px}
+    .hire-modal-close{float:right;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px 8px;margin-top:-4px}
+    .hire-modal-close:hover{color:var(--text)}
+    .hire-fired-note{padding:4px 24px 16px;font-size:12px;color:var(--muted);font-style:italic}
   </style>
 </head>
 <body>
@@ -2216,6 +2255,7 @@ document.addEventListener('dragend', () => {
 
 document.addEventListener('click', e => {
   if (e.target && e.target.id === 'modal-overlay') { U.modal=null; render(); return; }
+  if (e.target && e.target.id === 'hire-modal-overlay') { U.showHireModal=false; render(); return; }
 
   const btn = e.target.closest('[data-act]');
   if (!btn) return;
@@ -2228,6 +2268,37 @@ document.addEventListener('click', e => {
     case 'cc-switch-league':
       switchLeague(btn.dataset.lid);
       U.tab = 'command'; render(); break;
+
+    case 'open-hire-modal':
+    case 'hire-staff':
+      U.showHireModal = true;
+      U.hireRole = btn.dataset.role || STAFF_ROLES[0].id;
+      render(); break;
+
+    case 'close-hire-modal':
+      U.showHireModal = false; render(); break;
+
+    case 'hire-role-tab':
+      U.hireRole = btn.dataset.val; render(); break;
+
+    case 'hire-confirm': {
+      const role = btn.dataset.role;
+      const cid  = btn.dataset.cid;
+      const pool = getCandidatePool(role);
+      const candidate = pool.find(c => c.id === cid);
+      if (!candidate) break;
+      if (!STAFF.hired) STAFF.hired = {};
+      STAFF.hired[role] = candidate;
+      saveStaff();
+      U.showHireModal = false;
+      render(); break;
+    }
+
+    case 'dismiss-alert': {
+      const aid = btn.dataset.aid;
+      STAFF.deskAlerts = (STAFF.deskAlerts || []).filter(a => a.id !== aid);
+      saveStaff(); render(); break;
+    }
 
     case 'intel-type':
       INTEL.intelType = btn.dataset.val;
@@ -2724,6 +2795,105 @@ async function doSleeperImport() {
 //  COMMAND CENTER
 // ══════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════
+//  STAFF SYSTEM
+// ══════════════════════════════════════════════════
+
+const STAFF_ROLES = [
+  { id:'gm',    label:'General Manager', emoji:'🧠', desc:'Evaluates trade value, ranks players, spots roster holes.' },
+  { id:'coach', label:'Head Coach',      emoji:'📋', desc:'Analyzes lineups, matchups, and start/sit decisions.' },
+  { id:'scout', label:'Scout',           emoji:'🔍', desc:'Tracks waiver wire, prospects, and breakout candidates.' },
+];
+
+const STAFF_FIRST = ['Marcus','Devon','Ray','Tre','Donte','Isaiah','Jordan','Caleb','Lance','Malik','Jarvis','Darius','Elijah','Keonte','Damien','Rodney','Curtis','Alphonso','Shawn','Terrence','Lou','Benny','Felix','Oscar','Dante'];
+const STAFF_LAST  = ['Williams','Johnson','Davis','Brown','Thompson','Harris','Robinson','Walker','Carter','Mitchell','Green','Adams','Taylor','White','Moore','Jackson','Martin','Lee','Lewis','Hall','Allen','Young','King','Wright','Scott'];
+const STAFF_TRAITS = {
+  gm:    ['Sabermetrics obsessive','Film study addict','Trade calculator wizard','Analytics-first thinker','Old-school tape guy','Dynasty value hunter','Contrarian ranker','Sleeper value specialist'],
+  coach: ['Situational genius','Matchup exploiter','Red zone specialist','Target share analyst','Floor-first drafter','Boom-or-bust gambler','Set-it-and-forget-it','Injury-aware lineup setter'],
+  scout: ['Early-wave waiver hawk','Snap count tracker','Athletic testing nerd','College tape deep-diver','Practice report fanatic','Beat writer networker','Preseason obsessive','Rookie contract tracker'],
+};
+const STAFF_TAGS = {
+  gm:    [['Dynasty Focus','#a78bfa','#3b0764'],['Trade Shark','#f59e0b','#3a2400'],['Redraft Expert','#60a5fa','#0c2340'],['Balanced','#22c55e','#052e16']],
+  coach: [['Aggressive','#ef4444','#3a0a0a'],['Conservative','#60a5fa','#0c2340'],['Matchup King','#f59e0b','#3a2400'],['Data-Driven','#a78bfa','#3b0764']],
+  scout: [['Waiver Hawk','#22c55e','#052e16'],['Prospect Guru','#f59e0b','#3a2400'],['Injury Intel','#ef4444','#3a0a0a'],['Deep Sleepers','#a78bfa','#3b0764']],
+};
+
+// Deterministic persona seed from a string
+function djb2(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h) ^ str.charCodeAt(i);
+  return Math.abs(h);
+}
+
+function generateCandidate(role, seed) {
+  const h = djb2(role + seed);
+  const pick = (arr, n) => arr[(h * (n+1) * 31337) % arr.length | 0];
+  const firstName = pick(STAFF_FIRST, 0);
+  const lastName  = pick(STAFF_LAST, 1);
+  const trait     = pick(STAFF_TRAITS[role], 2);
+  const tag       = (STAFF_TAGS[role] || STAFF_TAGS.gm)[(h * 7 % (STAFF_TAGS[role]||STAFF_TAGS.gm).length) | 0];
+  const avatarSeed = `${firstName}${lastName}${seed}`.toLowerCase().replace(/\s/g,'');
+  return { id: `${role}_${seed}`, role, firstName, lastName, trait, tag, avatarSeed };
+}
+
+function getCandidatePool(role) {
+  // Use a daily-rotating seed so pool refreshes each day but is consistent within a day
+  const daySeed = Math.floor(Date.now() / 86400000);
+  return [0,1,2,3].map(i => generateCandidate(role, `${daySeed}_${i}`));
+}
+
+function avatarUrl(seed, style='lorelei') {
+  return `https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(seed)}&backgroundColor=0d1220&radius=50`;
+}
+
+function renderHiringModal() {
+  const activeRole = U.hireRole || STAFF_ROLES[0].id;
+  const roleDef = STAFF_ROLES.find(r => r.id === activeRole) || STAFF_ROLES[0];
+  const candidates = getCandidatePool(activeRole);
+  const hired = STAFF.hired || {};
+
+  const roleTabs = STAFF_ROLES.map(r => {
+    const isHired = !!hired[r.id];
+    return `<button class="hire-role-tab${activeRole===r.id?' active':''}" data-act="hire-role-tab" data-val="${r.id}">
+      ${r.emoji} ${r.label}${isHired ? ' ✓' : ''}
+    </button>`;
+  }).join('');
+
+  const currentHire = hired[activeRole];
+  const firedNote = currentHire
+    ? `<div class="hire-fired-note">Hiring someone new will release ${esc(currentHire.firstName)} ${esc(currentHire.lastName)}.</div>`
+    : '';
+
+  const cards = candidates.map(c => {
+    const tag = c.tag;
+    const isCurrent = currentHire && currentHire.id === c.id;
+    return `<div class="hire-candidate${isCurrent?' hire-candidate-current':''}" data-act="hire-confirm" data-cid="${esc(c.id)}" data-role="${esc(c.role)}">
+      <div class="hire-candidate-avatar">
+        <img src="${avatarUrl(c.avatarSeed)}" alt="" loading="lazy" onerror="this.style.display='none'">
+      </div>
+      <div>
+        <div class="hire-candidate-name">${esc(c.firstName)} ${esc(c.lastName)}${isCurrent?' <span style="color:var(--gold);font-size:10px">(current)</span>':''}</div>
+        <div class="hire-candidate-role">${roleDef.label}</div>
+        <div class="hire-candidate-trait">"${esc(c.trait)}"</div>
+        <div class="hire-candidate-tag" style="color:${tag[1]};border-color:${tag[1]};background:${tag[2]}20">${esc(tag[0])}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `<div class="hire-modal-overlay" id="hire-modal-overlay">
+    <div class="hire-modal">
+      <div class="hire-modal-hd">
+        <button class="hire-modal-close" data-act="close-hire-modal">✕</button>
+        <div class="hire-modal-title">🏢 Front Office Hiring</div>
+        <div class="hire-modal-sub">Build your staff. Each role unlocks different alerts and features.</div>
+      </div>
+      <div class="hire-role-tabs">${roleTabs}</div>
+      ${firedNote}
+      <div class="hire-candidates">${cards}</div>
+    </div>
+  </div>`;
+}
+
 function renderCommandCenter() {
   const lvl = FACILITY.level || 0;
   const facilityNames = ['Broom Closet','Startup Office','Mid-Market HQ','Major Market','Dynasty HQ','The Empire'];
@@ -2746,50 +2916,56 @@ function renderCommandCenter() {
     <div style="font-size:12px;color:var(--muted)">Add League</div>
   </div>`;
 
-  // Staff desk content
-  const hiresEmpty = !STAFF.hired || Object.keys(STAFF.hired).length === 0;
-  let deskContent = '';
+  // Staff desk — Marge always present, then hired staff cards
+  const hasTeams = LEAGUES.some(l => (l.teams||[]).length > 0);
+  const bubbleMsg = hasTeams
+    ? "Honey, your leagues are loaded. Now hire a GM so he can actually do something useful."
+    : "Honey, you can't run a franchise with no players. Click that note to get started.";
 
-  if (lvl === 0) {
-    // Marge — level 0 assistant
-    const hasTeams = LEAGUES.some(l => (l.teams||[]).length > 0);
-    const bubbleMsg = hasTeams
-      ? "Honey, your leagues are loaded. Now go rank some players — the GM can't do his job blind."
-      : "Honey, you can't run a franchise with no players. Click that note to get started.";
-    deskContent = `
-      <div class="marge-wrap">
-        <div class="marge-char">
-          <div class="marge-emoji">👩‍🦳</div>
-          <div class="marge-smoke">🚬</div>
+  const hired = STAFF.hired || {};
+  const staffCards = STAFF_ROLES.map(role => {
+    const hire = hired[role.id];
+    if (hire) {
+      const totalXp = Object.values((STAFF.xp||{})[role.id] || {}).reduce((s,v)=>s+v,0);
+      const xpPct = Math.min(100, (totalXp / 100) * 100);
+      return `<div class="staff-card" data-act="open-hire-modal" title="Click to manage staff">
+        <div class="staff-card-avatar">
+          <img src="${avatarUrl(hire.avatarSeed)}" alt="" loading="lazy" onerror="this.style.display='none'">
         </div>
-        <div class="marge-bubble">
-          <div class="bubble-name">Marge · Your Assistant</div>
-          <div class="bubble-text">${bubbleMsg}</div>
-        </div>
-        ${!hasTeams ? `<div class="sticky-note-wrap">
-          <div class="sticky-note" data-act="tab" data-val="import">📝 Add Your Team</div>
-        </div>` : ''}
-      </div>`;
-  } else if (hiresEmpty) {
-    deskContent = `<div style="text-align:center;padding:32px;color:var(--muted);font-size:14px">
-      Your front office is empty. <button class="btn btn-gold btn-sm" data-act="hire-staff" style="margin-left:8px">Hire Staff</button>
-    </div>`;
-  } else {
-    // Render desk alert cards from hired staff
-    const alerts = (STAFF.deskAlerts || []).map(a => `
-      <div class="desk-alert">
-        <div class="desk-alert-avatar">${a.emoji || '🏈'}</div>
-        <div class="desk-alert-body">
-          <div class="desk-alert-from">${esc(a.from)} · ${esc(a.role)}</div>
-          <div class="desk-alert-msg">${esc(a.msg)}</div>
-          <div class="desk-alert-actions">
-            ${(a.actions||[]).map(act=>`<button class="btn btn-outline btn-sm" data-act="desk-action" data-aid="${esc(a.id)}" data-aact="${esc(act.act)}">${esc(act.label)}</button>`).join('')}
-            <button class="btn btn-outline btn-sm" data-act="dismiss-alert" data-aid="${esc(a.id)}">Dismiss</button>
+        <div class="staff-card-body">
+          <div class="staff-card-name">${esc(hire.firstName)} ${esc(hire.lastName)}</div>
+          <div class="staff-card-role">${role.emoji} ${role.label}</div>
+          <div class="staff-card-trait">${esc(hire.trait)}</div>
+          <div class="staff-card-xp">
+            <div class="xp-bar"><div class="xp-fill" style="width:${xpPct}%"></div></div>
+            <div class="xp-label">${totalXp} XP</div>
           </div>
         </div>
-      </div>`).join('') || `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">All clear — your staff has nothing urgent for you.</div>`;
-    deskContent = alerts;
-  }
+      </div>`;
+    }
+    return `<div class="staff-add-slot" data-act="open-hire-modal" data-role="${role.id}">
+      <div style="font-size:22px">${role.emoji}</div>
+      <div>Hire ${role.label}</div>
+    </div>`;
+  }).join('');
+
+  const deskContent = `
+    <div class="marge-wrap" style="margin-bottom:16px">
+      <div class="marge-char">
+        <div class="marge-emoji">👩‍🦳</div>
+        <div class="marge-smoke">🚬</div>
+      </div>
+      <div class="marge-bubble">
+        <div class="bubble-name">Marge · Your Assistant</div>
+        <div class="bubble-text">${bubbleMsg}</div>
+      </div>
+      ${!hasTeams ? `<div class="sticky-note-wrap">
+        <div class="sticky-note" data-act="tab" data-val="import">📝 Add Your Team</div>
+      </div>` : ''}
+    </div>
+    <div class="staff-cards">${staffCards}</div>`;
+
+  const modal = U.showHireModal ? renderHiringModal() : '';
 
   return `<div class="cc-page">
     <div class="cc-facility ${bgClass}">
@@ -2798,6 +2974,7 @@ function renderCommandCenter() {
           <div class="cc-title">🏟️ Your Franchise</div>
           <div class="cc-facility-badge">${facilityNames[lvl] || 'Unknown'}</div>
         </div>
+        <button class="btn btn-outline btn-sm" data-act="open-hire-modal" style="font-size:11px">🏢 Manage Staff</button>
       </div>
 
       <div class="cc-section-label">Your Leagues</div>
@@ -2806,7 +2983,7 @@ function renderCommandCenter() {
       <div class="cc-section-label">Front Office</div>
       <div class="staff-desk">${deskContent}</div>
     </div>
-  </div>`;
+  </div>${modal}`;
 }
 
 // ══════════════════════════════════════════════════
