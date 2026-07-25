@@ -198,6 +198,58 @@
       .assess-row{gap:4px}
       .abtn{padding:3px 7px;font-size:10px}
     }
+
+    /* ── Command Center ─────────────────────────────── */
+    .cc-page{max-width:1100px;margin:0 auto;padding:20px 18px}
+
+    /* Facility backgrounds */
+    .facility-0{background:radial-gradient(ellipse at 30% 20%,#2a1a08 0%,#0d0a06 60%,#080604 100%);border-radius:16px;padding:24px;min-height:70vh;position:relative;overflow:hidden;box-shadow:inset 0 0 80px rgba(0,0,0,.6)}
+    .facility-0::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 48px,rgba(255,255,255,.015) 48px,rgba(255,255,255,.015) 49px),repeating-linear-gradient(90deg,transparent,transparent 48px,rgba(255,255,255,.015) 48px,rgba(255,255,255,.015) 49px);pointer-events:none}
+    .facility-1{background:radial-gradient(ellipse at 50% 0%,#0f1a2e 0%,#080c14 70%);border-radius:16px;padding:24px;min-height:70vh}
+    .facility-2{background:radial-gradient(ellipse at 60% 10%,#0a1628 0%,#060a10 70%);border-radius:16px;padding:24px;min-height:70vh}
+
+    .cc-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px}
+    .cc-title{font-size:22px;font-weight:900;color:var(--gold);letter-spacing:-.5px}
+    .cc-facility-badge{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:4px 12px;margin-top:4px}
+
+    .cc-section-label{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;margin-top:20px}
+
+    /* League overview cards */
+    .lo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:4px}
+    .lo-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px 16px;cursor:pointer;transition:.15s;position:relative}
+    .lo-card:hover{border-color:var(--gold);background:rgba(245,158,11,.06);transform:translateY(-1px)}
+    .lo-card-active{border-color:var(--gold)!important;background:rgba(245,158,11,.08)!important}
+    .lo-card-name{font-weight:700;font-size:13px;color:var(--text);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .lo-card-team{font-size:12px;color:var(--muted);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .lo-card-meta{font-size:11px;color:var(--muted)}
+    .lo-card-sync{position:absolute;top:10px;right:10px;width:7px;height:7px;border-radius:50%;background:#22c55e}
+
+    /* Staff desk */
+    .staff-desk{background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px;margin-top:4px;min-height:140px}
+
+    /* Marge */
+    .marge-wrap{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
+    .marge-char{position:relative;display:flex;flex-direction:column;align-items:center;flex-shrink:0}
+    .marge-emoji{font-size:54px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
+    .marge-smoke{position:absolute;bottom:0;right:-4px;font-size:18px;animation:smoke 3s ease-in-out infinite}
+    @keyframes smoke{0%,100%{opacity:.6;transform:translateY(0) rotate(-5deg)}50%{opacity:1;transform:translateY(-4px) rotate(5deg)}}
+    .marge-bubble{background:#f5ead4;color:#2d1f0a;border-radius:14px 14px 14px 0;padding:12px 16px;max-width:320px;box-shadow:0 2px 12px rgba(0,0,0,.4);position:relative}
+    .marge-bubble::before{content:'';position:absolute;bottom:-8px;left:0;width:0;height:0;border-top:8px solid #f5ead4;border-right:12px solid transparent}
+    .bubble-name{font-size:10px;font-weight:800;color:#8b6914;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+    .bubble-text{font-size:13px;line-height:1.5;font-style:italic}
+
+    /* Sticky note */
+    .sticky-note-wrap{display:flex;align-items:flex-end;padding-bottom:8px}
+    .sticky-note{background:#fef08a;color:#422;border-radius:3px;padding:12px 16px;font-size:12px;font-weight:700;cursor:pointer;transform:rotate(-3deg);display:inline-block;box-shadow:3px 3px 8px rgba(0,0,0,.4),inset 0 -2px 4px rgba(0,0,0,.1);transition:.2s;line-height:1.4}
+    .sticky-note:hover{transform:rotate(0deg) scale(1.04);box-shadow:4px 4px 12px rgba(0,0,0,.5)}
+
+    /* Alert cards on desk */
+    .desk-alert{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start}
+    .desk-alert-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;background:rgba(255,255,255,.08)}
+    .desk-alert-body{flex:1;min-width:0}
+    .desk-alert-from{font-size:11px;font-weight:700;color:var(--gold);margin-bottom:4px}
+    .desk-alert-msg{font-size:13px;color:var(--text);line-height:1.45}
+    .desk-alert-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
   </style>
 </head>
 <body>
@@ -215,6 +267,33 @@ const IDP_POSITIONS = ['DL','LB','DB'];
 
 const LEAGUES_KEY = 'dynastyHQ_leagues_v1';
 const CURRENT_LEAGUE_KEY = 'dynastyHQ_currentLeague';
+
+// App-level Firebase — stores user-private data (leagues, staff, facility)
+const APP_FB_URL = 'https://dynasty-hq-664f5-default-rtdb.firebaseio.com';
+
+function getUid() {
+  let uid = localStorage.getItem('dynastyHQ_uid');
+  if (!uid) {
+    uid = 'u_' + Math.random().toString(36).slice(2,11) + Date.now().toString(36);
+    localStorage.setItem('dynastyHQ_uid', uid);
+  }
+  return uid;
+}
+const UID = getUid();
+
+async function userGet(path) {
+  try {
+    const res = await fetch(`${APP_FB_URL}/users/${UID}/${path}.json`);
+    return res.ok ? res.json() : null;
+  } catch(e) { return null; }
+}
+async function userPut(path, data) {
+  try {
+    await fetch(`${APP_FB_URL}/users/${UID}/${path}.json`, {
+      method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)
+    });
+  } catch(e) {}
+}
 
 // Base slots — QB adjusted for superflex, IDP positions adjusted for IDP_FLEX
 const BASE_SLOTS = {
@@ -339,13 +418,14 @@ function loadLeagues() {
 
 function saveLeagues() {
   try {
-    // Flush current working state back into LEAGUES before writing
     const idx = LEAGUES.findIndex(l => l.id === CURRENT_LEAGUE_ID);
     if (idx >= 0) {
       LEAGUES[idx] = { ...LEAGUES[idx], ...S, fbUrl: FB_URL, myTeamId: MY_TEAM_ID };
     }
-    localStorage.setItem(LEAGUES_KEY, JSON.stringify(LEAGUES));
-    localStorage.setItem(CURRENT_LEAGUE_KEY, CURRENT_LEAGUE_ID);
+    // Primary storage: Firebase (frees device storage)
+    userPut('leagues', LEAGUES);
+    // Only tiny keys stay in localStorage
+    try { localStorage.setItem(CURRENT_LEAGUE_KEY, CURRENT_LEAGUE_ID); } catch(e) {}
   } catch(e) {}
 }
 
@@ -596,9 +676,23 @@ function normalizeName(name) {
     .trim();
 }
 
+// Facility & staff state (synced to Firebase via initFirebaseSync)
+let FACILITY = { level: 0, trophies: [], achievements: {} };
+let STAFF     = { hired: {}, xp: {} };
+
+function saveFacility() { userPut('facility', FACILITY); }
+function saveStaff()    { userPut('staff', STAFF); }
+
+function addStaffXp(role, activity, amount) {
+  if (!STAFF.xp[role]) STAFF.xp[role] = {};
+  if (!STAFF.xp[role][activity]) STAFF.xp[role][activity] = 0;
+  STAFF.xp[role][activity] += amount;
+  saveStaff();
+}
+
 // UI state (never persisted)
 let U = {
-  tab:'myteam', gmTeam:null, tradeTeam:null,
+  tab:'command', gmTeam:null, tradeTeam:null,
   modal:null, addForTeam:null,
   importStatus:null, importing:false, importProgress:'',
   showAddTeam:false, showFbSetup:false,
@@ -1212,7 +1306,7 @@ function teamPositions(teamId, canDelete) {
 
 function renderNav() {
   const tabs=[
-    {id:'myteam',label:'My Team'},{id:'gmboard',label:'GM Board'},
+    {id:'command',label:'🏟️ HQ'},{id:'myteam',label:'My Team'},{id:'gmboard',label:'GM Board'},
     {id:'tradefinder',label:'Trade Finder'},{id:'intel',label:'📊 Intel'},{id:'import',label:'⚙️ Setup'},
   ];
   const syncDot = FB_URL
@@ -2057,10 +2151,11 @@ function renderIntel() {
 
 function render() {
   const content =
-    U.tab==='myteam'      ? renderMyTeam()      :
-    U.tab==='gmboard'     ? renderGMBoard()     :
-    U.tab==='tradefinder' ? renderTradeFinder() :
-    U.tab==='intel'       ? renderIntel()       :
+    U.tab==='command'     ? renderCommandCenter() :
+    U.tab==='myteam'      ? renderMyTeam()        :
+    U.tab==='gmboard'     ? renderGMBoard()       :
+    U.tab==='tradefinder' ? renderTradeFinder()   :
+    U.tab==='intel'       ? renderIntel()         :
                             renderImport();
 
   document.getElementById('root').innerHTML = renderNav() + content + renderModal();
@@ -2128,6 +2223,10 @@ document.addEventListener('click', e => {
   switch(act) {
     case 'tab':
       U.tab = btn.dataset.val; render(); break;
+
+    case 'cc-switch-league':
+      switchLeague(btn.dataset.lid);
+      U.tab = 'command'; render(); break;
 
     case 'intel-type':
       INTEL.intelType = btn.dataset.val;
@@ -2621,16 +2720,156 @@ async function doSleeperImport() {
 }
 
 // ══════════════════════════════════════════════════
+//  COMMAND CENTER
+// ══════════════════════════════════════════════════
+
+function renderCommandCenter() {
+  const lvl = FACILITY.level || 0;
+  const facilityNames = ['Broom Closet','Startup Office','Mid-Market HQ','Major Market','Dynasty HQ','The Empire'];
+  const bgClass = `facility-${Math.min(lvl, 2)}`; // CSS has 0-2 defined, expand later
+
+  // Multi-league overview cards
+  const leagueCards = LEAGUES.map(l => {
+    const myTeam = (l.teams||[]).find(t => t.isMyTeam || t.id === l.myTeamId);
+    const isActive = l.id === CURRENT_LEAGUE_ID;
+    return `<div class="lo-card${isActive?' lo-card-active':''}" data-act="cc-switch-league" data-lid="${esc(l.id)}">
+      ${l.fbUrl ? '<div class="lo-card-sync" title="Live sync active"></div>' : ''}
+      <div class="lo-card-name">${esc(l.name)}</div>
+      <div class="lo-card-team">${myTeam ? esc(myTeam.name) : '<span style="color:var(--muted)">No team</span>'}</div>
+      <div class="lo-card-meta">${(l.teams||[]).length} teams · ${(myTeam&&myTeam.players||[]).length} players</div>
+    </div>`;
+  }).join('');
+
+  const addLeagueCard = `<div class="lo-card" data-act="tab" data-val="import" style="border-style:dashed;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80px;gap:6px">
+    <div style="font-size:20px">+</div>
+    <div style="font-size:12px;color:var(--muted)">Add League</div>
+  </div>`;
+
+  // Staff desk content
+  const hiresEmpty = !STAFF.hired || Object.keys(STAFF.hired).length === 0;
+  let deskContent = '';
+
+  if (lvl === 0) {
+    // Marge — level 0 assistant
+    const hasTeams = LEAGUES.some(l => (l.teams||[]).length > 0);
+    const bubbleMsg = hasTeams
+      ? "Honey, your leagues are loaded. Now go rank some players — the GM can't do his job blind."
+      : "Honey, you can't run a franchise with no players. Click that note to get started.";
+    deskContent = `
+      <div class="marge-wrap">
+        <div class="marge-char">
+          <div class="marge-emoji">👩‍🦳</div>
+          <div class="marge-smoke">🚬</div>
+        </div>
+        <div class="marge-bubble">
+          <div class="bubble-name">Marge · Your Assistant</div>
+          <div class="bubble-text">${bubbleMsg}</div>
+        </div>
+        ${!hasTeams ? `<div class="sticky-note-wrap">
+          <div class="sticky-note" data-act="tab" data-val="import">📝 Add Your Team</div>
+        </div>` : ''}
+      </div>`;
+  } else if (hiresEmpty) {
+    deskContent = `<div style="text-align:center;padding:32px;color:var(--muted);font-size:14px">
+      Your front office is empty. <button class="btn btn-gold btn-sm" data-act="hire-staff" style="margin-left:8px">Hire Staff</button>
+    </div>`;
+  } else {
+    // Render desk alert cards from hired staff
+    const alerts = (STAFF.deskAlerts || []).map(a => `
+      <div class="desk-alert">
+        <div class="desk-alert-avatar">${a.emoji || '🏈'}</div>
+        <div class="desk-alert-body">
+          <div class="desk-alert-from">${esc(a.from)} · ${esc(a.role)}</div>
+          <div class="desk-alert-msg">${esc(a.msg)}</div>
+          <div class="desk-alert-actions">
+            ${(a.actions||[]).map(act=>`<button class="btn btn-outline btn-sm" data-act="desk-action" data-aid="${esc(a.id)}" data-aact="${esc(act.act)}">${esc(act.label)}</button>`).join('')}
+            <button class="btn btn-outline btn-sm" data-act="dismiss-alert" data-aid="${esc(a.id)}">Dismiss</button>
+          </div>
+        </div>
+      </div>`).join('') || `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">All clear — your staff has nothing urgent for you.</div>`;
+    deskContent = alerts;
+  }
+
+  return `<div class="cc-page">
+    <div class="cc-facility ${bgClass}">
+      <div class="cc-header">
+        <div>
+          <div class="cc-title">🏟️ Your Franchise</div>
+          <div class="cc-facility-badge">${facilityNames[lvl] || 'Unknown'}</div>
+        </div>
+      </div>
+
+      <div class="cc-section-label">Your Leagues</div>
+      <div class="lo-grid">${leagueCards}${addLeagueCard}</div>
+
+      <div class="cc-section-label">Front Office</div>
+      <div class="staff-desk">${deskContent}</div>
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════════════════
 
 syncSelectors();
-// Auto-connect Firebase if URL saved (from prior session or join link in hash)
 if (FB_URL) {
-  connectFirebase(FB_URL); // connectFirebase calls render() when data arrives
+  connectFirebase(FB_URL);
 } else {
   render();
 }
+
+// Background Firebase sync — loads user data from Firebase, updates app state
+// Uses optimistic pattern: show localStorage data immediately, sync in background
+async function initFirebaseSync() {
+  try {
+    const [fbLeagues, fbFacility, fbStaff] = await Promise.all([
+      userGet('leagues'),
+      userGet('facility'),
+      userGet('staff'),
+    ]);
+
+    let changed = false;
+
+    if (fbLeagues) {
+      const arr = Array.isArray(fbLeagues) ? fbLeagues : Object.values(fbLeagues);
+      if (arr.length > 0) {
+        LEAGUES = arr;
+        // Re-sync current league state
+        const league = LEAGUES.find(l => l.id === CURRENT_LEAGUE_ID) || LEAGUES[0];
+        if (league) {
+          CURRENT_LEAGUE_ID = league.id;
+          S.teams         = league.teams         || S.teams;
+          S.gmRankings    = league.gmRankings    || S.gmRankings;
+          S.gmAssessments = league.gmAssessments || S.gmAssessments;
+          S.settings      = league.settings      || S.settings;
+          S.myRankings    = league.myRankings    || S.myRankings;
+          S.myAssessment  = league.myAssessment  || S.myAssessment;
+          FB_URL          = league.fbUrl         || FB_URL;
+          MY_TEAM_ID      = league.myTeamId      || MY_TEAM_ID;
+        }
+        changed = true;
+      }
+    } else {
+      // No Firebase data yet — migrate from localStorage
+      const localRaw = localStorage.getItem(LEAGUES_KEY);
+      if (localRaw) {
+        const localLeagues = JSON.parse(localRaw);
+        if (localLeagues && localLeagues.length) {
+          userPut('leagues', localLeagues); // migrate
+          // localStorage cleanup happens naturally as saves go to Firebase
+        }
+      }
+    }
+
+    if (fbFacility) { FACILITY = fbFacility; changed = true; }
+    if (fbStaff)    { STAFF    = fbStaff;    changed = true; }
+
+    if (changed) { syncSelectors(); if (!FB_CONNECTED) render(); }
+  } catch(e) { console.warn('Firebase user sync failed:', e); }
+}
+
+initFirebaseSync();
 
 </script>
   <script>
