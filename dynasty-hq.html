@@ -2473,6 +2473,7 @@ async function doSleeperImportSelected() {
           if (!POSITIONS.includes(mappedPos)) return null;
           return {id:'sl_'+pid, name:p.full_name||pid, pos:mappedPos, age:p.age||0, rank:p.search_rank||9999};
         }).filter(Boolean);
+        players.sort((a,b) => a.rank - b.rank);
         return {id:'sl_'+r.roster_id, name, isMyTeam, players};
       });
 
