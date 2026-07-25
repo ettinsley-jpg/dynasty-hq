@@ -2464,7 +2464,7 @@ async function doSleeperImportSelected() {
         const name = userMap[r.owner_id]||('Team '+(idx+1));
         const owners = [r.owner_id, ...(r.co_owners||[])].filter(Boolean);
         const isMyTeam = !!(U.sleeperUserId && owners.includes(U.sleeperUserId));
-        const pids = [...new Set(r.players||[])];
+        const pids = [...new Set([...(r.players||[]), ...(r.reserve||[])])];
         const players = pids.map(pid => {
           const p = allP[pid];
           if (!p) return null;
