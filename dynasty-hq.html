@@ -603,6 +603,9 @@ let U = {
   importStatus:null, importing:false, importProgress:'',
   showAddTeam:false, showFbSetup:false,
   intelSearch: '',
+  sleeperFoundLeagues: null,   // [{league_id, name, season, roster_positions, total_rosters}]
+  sleeperSelectedIds: null,    // Set of league_ids chosen by user
+  sleeperLookingUp: false,
 };
 
 // ══════════════════════════════════════════════════
@@ -1600,18 +1603,42 @@ function renderImport() {
     <!-- STEP 2: Sleeper import -->
     <div class="card">
       <div class="card-hd"><div class="card-title">🔗 Step 2 — Import from Sleeper</div></div>
-      <div class="alert alert-info" style="margin-bottom:12px">
-        <strong>Where's my league ID?</strong> Open Sleeper → tap your league → scroll to the bottom → copy the League ID.
-        ${FB_CONNECTED ? '<br><strong>With sync connected, this imports rosters for the entire league automatically.</strong>' : ''}
-      </div>
       ${statHtml}${progHtml}
-      <div class="fg">
-        <label>Sleeper League ID</label>
-        <input type="text" id="sleeper-lid" placeholder="e.g. 1048268799842312192" />
+      <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:12px">
+        <div class="fg" style="margin-bottom:0;flex:1">
+          <label>Sleeper Username</label>
+          <input type="text" id="sleeper-username" placeholder="e.g. johndoe" ${U.importing||U.sleeperLookingUp?'disabled':''} />
+        </div>
+        <button class="btn btn-outline" data-act="sleeper-lookup" ${U.sleeperLookingUp||U.importing?'disabled':''} style="white-space:nowrap">
+          ${U.sleeperLookingUp ? 'Looking up…' : 'Find My Leagues'}
+        </button>
       </div>
-      <button class="btn btn-gold" data-act="sleeper-import" ${U.importing?'disabled':''}>
-        ${U.importing ? 'Importing…' : 'Import League from Sleeper'}
-      </button>
+      ${U.sleeperFoundLeagues ? `
+        <div style="margin-bottom:12px">
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">
+            Found ${U.sleeperFoundLeagues.length} league${U.sleeperFoundLeagues.length!==1?'s':''} — select which to import:
+          </div>
+          ${U.sleeperFoundLeagues.map(lg => {
+            const sel = U.sleeperSelectedIds && U.sleeperSelectedIds.has(lg.league_id);
+            const sfx = (lg.roster_positions||[]).includes('SUPER_FLEX') ? ' · SF' : '';
+            const idp = (lg.roster_positions||[]).some(p=>['DL','LB','DB','IDP_FLEX'].includes(p)) ? ' · IDP' : '';
+            return `<label style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;border:1px solid ${sel?'var(--blue)':'var(--border)'};background:${sel?'rgba(96,165,250,.07)':'var(--bg3)'};margin-bottom:6px;cursor:pointer">
+              <input type="checkbox" data-act="toggle-league-sel" data-lid="${esc(lg.league_id)}" ${sel?'checked':''} style="width:16px;height:16px;accent-color:var(--blue)">
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(lg.name)}</div>
+                <div style="font-size:11px;color:var(--muted)">${lg.total_rosters} teams · ${lg.season}${sfx}${idp}</div>
+              </div>
+            </label>`;
+          }).join('')}
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn btn-outline btn-sm" data-act="sleeper-select-all">Select All</button>
+            <button class="btn btn-outline btn-sm" data-act="sleeper-deselect-all">Deselect All</button>
+          </div>
+        </div>
+        <button class="btn btn-gold" data-act="sleeper-import-selected" ${U.importing||!U.sleeperSelectedIds||U.sleeperSelectedIds.size===0?'disabled':''}>
+          ${U.importing ? 'Importing…' : `Import ${U.sleeperSelectedIds&&U.sleeperSelectedIds.size>0?U.sleeperSelectedIds.size+' ':''}Selected League${U.sleeperSelectedIds&&U.sleeperSelectedIds.size===1?'':'s'}`}
+        </button>
+      ` : ''}
     </div>
 
     <div class="divider"></div>
@@ -2219,6 +2246,24 @@ document.addEventListener('click', e => {
     case 'add-team':
       addTeamManual(); break;
 
+    case 'sleeper-lookup':
+      doSleeperLookup(); break;
+
+    case 'sleeper-select-all':
+      if (U.sleeperFoundLeagues) {
+        U.sleeperSelectedIds = new Set(U.sleeperFoundLeagues.map(l=>l.league_id));
+        render();
+      }
+      break;
+
+    case 'sleeper-deselect-all':
+      U.sleeperSelectedIds = new Set();
+      render();
+      break;
+
+    case 'sleeper-import-selected':
+      doSleeperImportSelected(); break;
+
     case 'sleeper-import':
       doSleeperImport(); break;
 
@@ -2271,6 +2316,12 @@ document.addEventListener('click', e => {
 document.addEventListener('change', e => {
   const el = e.target.closest('[data-act]');
   if (!el) return;
+  if (el.dataset.act==='toggle-league-sel') {
+    if (!U.sleeperSelectedIds) U.sleeperSelectedIds = new Set();
+    const lid = el.dataset.lid;
+    if (el.checked) U.sleeperSelectedIds.add(lid); else U.sleeperSelectedIds.delete(lid);
+    render(); return;
+  }
   if (el.dataset.act==='switch-league') { switchLeague(el.value); return; }
   if (el.dataset.act==='gm-team')    { U.gmTeam=el.value;    render(); }
   if (el.dataset.act==='trade-team') { U.tradeTeam=el.value; render(); }
@@ -2293,6 +2344,7 @@ document.addEventListener('keydown', e => {
   if (e.key==='Enter') {
     const id = document.activeElement && document.activeElement.id;
     if ((id==='ap-name'||id==='ap-age') && U.modal==='addplayer') { submitAddPlayer(); return; }
+    if (id==='sleeper-username' && !U.sleeperLookingUp) { doSleeperLookup(); return; }
     if (id==='sleeper-lid' && !U.importing) { doSleeperImport(); return; }
     if (id==='add-team-name') { addTeamManual(); return; }
     if (id==='fb-url-input') {
@@ -2329,6 +2381,126 @@ function addTeamManual() {
   saveS(); U.showAddTeam=false; render();
 }
 
+// ── Sleeper username lookup ──────────────────────────────────────────────────
+async function doSleeperLookup() {
+  const usernameEl = document.getElementById('sleeper-username');
+  const username = usernameEl && usernameEl.value.trim();
+  if (!username) { U.importStatus={type:'error',msg:'Enter your Sleeper username first.'}; render(); return; }
+
+  U.sleeperLookingUp = true; U.importStatus = null; U.sleeperFoundLeagues = null; U.sleeperSelectedIds = null; render();
+
+  try {
+    const uRes = await fetch(`https://api.sleeper.app/v1/user/${encodeURIComponent(username)}`);
+    if (!uRes.ok) throw new Error('Sleeper user not found. Check your username.');
+    const user = await uRes.json();
+    if (!user || !user.user_id) throw new Error('Sleeper user not found.');
+
+    const season = new Date().getFullYear().toString();
+    const lRes = await fetch(`https://api.sleeper.app/v1/user/${user.user_id}/leagues/nfl/${season}`);
+    if (!lRes.ok) throw new Error('Could not load leagues.');
+    const leagues = await lRes.json();
+
+    if (!leagues || leagues.length === 0) {
+      U.importStatus = {type:'error', msg:`No leagues found for "${username}" in ${season}.`};
+      U.sleeperLookingUp = false; render(); return;
+    }
+
+    U.sleeperFoundLeagues = leagues.map(l => ({
+      league_id: l.league_id,
+      name: l.name || 'Unnamed League',
+      season: l.season,
+      total_rosters: l.total_rosters,
+      roster_positions: l.roster_positions || [],
+    }));
+    U.sleeperSelectedIds = new Set(U.sleeperFoundLeagues.map(l => l.league_id));
+  } catch(err) {
+    U.importStatus = {type:'error', msg: err.message || 'Lookup failed.'};
+  }
+
+  U.sleeperLookingUp = false; render();
+}
+
+// ── Import all selected leagues ──────────────────────────────────────────────
+async function doSleeperImportSelected() {
+  if (!U.sleeperFoundLeagues || !U.sleeperSelectedIds || U.sleeperSelectedIds.size === 0) return;
+
+  const toImport = U.sleeperFoundLeagues.filter(l => U.sleeperSelectedIds.has(l.league_id));
+  U.importing = true; U.importStatus = null; render();
+
+  // Load player DB once
+  U.importProgress = 'Loading player database…'; render();
+  let allP = null;
+  try {
+    const c = localStorage.getItem('sl_players_v2');
+    if (c) { const {ts,data}=JSON.parse(c); if (Date.now()-ts<86400000) allP=data; }
+  } catch(e) {}
+  if (!allP) {
+    const pRes = await fetch('https://api.sleeper.app/v1/players/nfl');
+    allP = await pRes.json();
+    try { localStorage.setItem('sl_players_v2', JSON.stringify({ts:Date.now(),data:allP})); } catch(e) {}
+  }
+
+  let imported = 0;
+  for (const lg of toImport) {
+    U.importProgress = `Importing "${lg.name}" (${imported+1}/${toImport.length})…`; render();
+    try {
+      const [rRes, uRes] = await Promise.all([
+        fetch(`https://api.sleeper.app/v1/league/${lg.league_id}/rosters`),
+        fetch(`https://api.sleeper.app/v1/league/${lg.league_id}/users`),
+      ]);
+      const rosters = await rRes.json();
+      const users   = await uRes.json();
+
+      const userMap = {};
+      users.forEach(u => { userMap[u.user_id] = (u.metadata&&u.metadata.team_name)||u.display_name||'Team'; });
+
+      const sfx   = lg.roster_positions.includes('SUPER_FLEX');
+      const isIDP = lg.roster_positions.some(p => IDP_POSITIONS.includes(p) || p==='IDP_FLEX');
+      const idpFlx= lg.roster_positions.includes('IDP_FLEX');
+
+      const newTeams = rosters.map((r,idx) => {
+        const name = userMap[r.owner_id]||('Team '+(idx+1));
+        const pids = (r.players||[]).concat(r.reserve||[]);
+        const players = pids.map(pid => {
+          const p = allP[pid];
+          if (!p) return null;
+          const rawPos    = (p.fantasy_positions&&p.fantasy_positions[0])||p.position||'';
+          const mappedPos = IDP_POS_MAP[rawPos]||IDP_POS_MAP[p.position]||rawPos;
+          if (!POSITIONS.includes(mappedPos)) return null;
+          return {id:'sl_'+pid, name:p.full_name||pid, pos:mappedPos, age:p.age||0, rank:p.search_rank||9999};
+        }).filter(Boolean);
+        return {id:'sl_'+r.roster_id, name, isMyTeam:false, players};
+      });
+
+      // Find or create the LEAGUES entry for this league
+      let existingIdx = LEAGUES.findIndex(l => l.sleeperLeagueId === lg.league_id);
+      if (existingIdx < 0) {
+        const newId = 'lg_' + Math.random().toString(36).slice(2,9);
+        LEAGUES.push({ id: newId, name: lg.name, sleeperLeagueId: lg.league_id, fbUrl: null, myTeamId: null, ...emptyLeagueState() });
+        existingIdx = LEAGUES.length - 1;
+      }
+      const leagueState = { ...emptyLeagueState(),
+        teams: newTeams,
+        settings: {superflex:!!sfx, idpFlex:!!idpFlx, isIDP:!!isIDP},
+      };
+      LEAGUES[existingIdx] = { ...LEAGUES[existingIdx], ...leagueState };
+      imported++;
+    } catch(e) {
+      console.warn('Failed to import league', lg.league_id, e);
+    }
+  }
+
+  localStorage.setItem(LEAGUES_KEY, JSON.stringify(LEAGUES));
+  // Switch to the first imported league
+  const firstImported = LEAGUES.find(l => toImport.some(t => t.league_id === l.sleeperLeagueId));
+  if (firstImported) switchLeague(firstImported.id);
+
+  U.importing = false; U.importProgress = '';
+  U.importStatus = {type:'success', msg:`✅ Imported ${imported} league${imported!==1?'s':''}. Click "This Is My Team" below to claim your roster.`};
+  render();
+}
+
+// ── Legacy single league ID import ──────────────────────────────────────────
 async function doSleeperImport() {
   const lidEl = document.getElementById('sleeper-lid');
   const lid   = lidEl && lidEl.value.trim();
