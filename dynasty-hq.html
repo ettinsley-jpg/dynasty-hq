@@ -454,7 +454,8 @@ function switchLeague(id) {
   FB_URL     = league.fbUrl    || null;
   MY_TEAM_ID = league.myTeamId || null;
   FB_LIVE    = { teams:{}, selfRankings:{}, selfAssessments:{}, settings:{} };
-  U.tab = 'myteam'; U.gmTeam = null; U.tradeTeam = null; U.importStatus = null;
+  if (U.tab !== 'command') U.tab = 'myteam';
+  U.gmTeam = null; U.tradeTeam = null; U.importStatus = null;
   saveLeagues();
   syncSelectors();
   if (FB_URL) connectFirebase(FB_URL);
