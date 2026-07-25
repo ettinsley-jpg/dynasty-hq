@@ -60,20 +60,33 @@
     .sl-backup{background:#374151;color:#9ca3af}
     .sl-deep{background:#1f2937;color:#6b7280}
 
+    /* Player avatar initials */
+    .pr-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;letter-spacing:.02em;border:2px solid transparent}
+    .pr-avatar-QB{background:#1e3a8a;color:#93c5fd;border-color:#1d4ed8}
+    .pr-avatar-RB{background:#14532d;color:#86efac;border-color:#15803d}
+    .pr-avatar-WR{background:#3b0764;color:#d8b4fe;border-color:#7c3aed}
+    .pr-avatar-TE{background:#7c2d12;color:#fdba74;border-color:#c2410c}
+    .pr-avatar-K{background:#292524;color:#d6d3d1;border-color:#57534e}
+    .pr-avatar-DEF{background:#1e1b4b;color:#a5b4fc;border-color:#4338ca}
+    .pr-avatar-DL{background:#3b1f00;color:#fb923c;border-color:#c2410c}
+    .pr-avatar-LB{background:#0f2d2d;color:#2dd4bf;border-color:#0f766e}
+    .pr-avatar-DB{background:#1a1030;color:#c084fc;border-color:#7c3aed}
+
     /* Player rows */
-    .pr{display:flex;align-items:center;gap:9px;padding:9px 11px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:5px;cursor:grab;user-select:none}
-    .pr.drag-over{border-color:var(--gold);background:#2a1d00}
-    .pr.dragging{opacity:.35}
-    .pr-rank{font-size:13px;font-weight:800;color:var(--muted);min-width:22px;text-align:center}
-    .pr-grip{color:var(--muted);font-size:18px;flex-shrink:0}
+    .pr{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;margin-bottom:5px;cursor:grab;user-select:none;transition:.15s}
+    .pr:hover{border-color:#2a3d5a;background:#161e2e}
+    .pr.drag-over{border-color:var(--gold);background:#1e1800}
+    .pr.dragging{opacity:.3}
+    .pr-rank{font-size:12px;font-weight:800;color:var(--muted);min-width:20px;text-align:center}
+    .pr-grip{color:var(--muted);font-size:16px;flex-shrink:0;opacity:.5}
     .pr-info{flex:1;min-width:0}
-    .pr-name{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .pr-meta{font-size:11px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    .pr-name{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.01em}
+    .pr-meta{font-size:11px;color:var(--muted);margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
     .pr-right{display:flex;gap:5px;align-items:center;flex-shrink:0}
     .mv{display:flex;flex-direction:column;gap:2px}
-    .mv-btn{background:var(--bg);border:1px solid var(--border);color:var(--muted);border-radius:3px;padding:1px 5px;font-size:11px;cursor:pointer;line-height:1.5}
-    .mv-btn:hover{background:var(--bg3);color:var(--text)}
-    .mv-btn:disabled{opacity:.3;cursor:default;pointer-events:none}
+    .mv-btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:2px 6px;font-size:11px;cursor:pointer;line-height:1.4;transition:.1s}
+    .mv-btn:hover{background:var(--bg2);color:var(--text);border-color:var(--muted)}
+    .mv-btn:disabled{opacity:.2;cursor:default;pointer-events:none}
 
     /* Separator */
     .sep{border-top:1px dashed var(--border);margin:4px 0 6px;position:relative}
@@ -1037,6 +1050,63 @@ function esc(s) {
 //  RENDER HELPERS
 // ══════════════════════════════════════════════════
 
+function rosterSummaryCard(team) {
+  const assess = getAssessment(team.id);
+  const posList = ['QB','RB','WR','TE'];
+  const players = team.players || [];
+  const totalPlayers = players.length;
+  const avgAge = players.filter(p=>p.age>0).length
+    ? (players.filter(p=>p.age>0).reduce((s,p)=>s+p.age,0) / players.filter(p=>p.age>0).length).toFixed(1)
+    : '—';
+
+  const posCards = posList.map(pos => {
+    const posPlayers = players.filter(p => p.pos === pos);
+    const slots = getPosSlots(pos);
+    const starters = posPlayers.slice(0, slots.s);
+    const pa = assess[pos] || {};
+    const starterGrade = pa.starters;
+    const depthGrade = pa.depth;
+    const gradeColor = g => g === 'strength' ? '#22c55e' : g === 'need' ? '#ef4444' : '#64748b';
+    const gradeIcon  = g => g === 'strength' ? '💪' : g === 'need' ? '⚠️' : '—';
+
+    return `<div style="flex:1;min-width:100px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span class="pb pb-${pos}">${pos}</span>
+        <span style="font-size:11px;color:var(--muted)">${posPlayers.length}p</span>
+      </div>
+      <div style="font-size:12px;margin-bottom:4px">
+        <span style="color:var(--muted)">Start: </span>
+        <span style="color:${gradeColor(starterGrade)};font-weight:700">${gradeIcon(starterGrade)} ${starterGrade||'Unrated'}</span>
+      </div>
+      <div style="font-size:12px">
+        <span style="color:var(--muted)">Depth: </span>
+        <span style="color:${gradeColor(depthGrade)};font-weight:700">${gradeIcon(depthGrade)} ${depthGrade||'Unrated'}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `<div class="card" style="margin-bottom:20px;background:linear-gradient(135deg,#111827 0%,#0d1520 100%)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px">Roster Overview</div>
+        <div style="font-size:20px;font-weight:800">${esc(team.name)}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:24px;font-weight:900;color:var(--gold)">${totalPlayers}</div>
+        <div style="font-size:11px;color:var(--muted)">players</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${posCards}</div>
+    <div style="display:flex;gap:16px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);padding-top:10px">
+      <span>Avg Age: <strong style="color:var(--text)">${avgAge}</strong></span>
+      <span>QBs: <strong style="color:var(--text)">${players.filter(p=>p.pos==='QB').length}</strong></span>
+      <span>RBs: <strong style="color:var(--text)">${players.filter(p=>p.pos==='RB').length}</strong></span>
+      <span>WRs: <strong style="color:var(--text)">${players.filter(p=>p.pos==='WR').length}</strong></span>
+      <span>TEs: <strong style="color:var(--text)">${players.filter(p=>p.pos==='TE').length}</strong></span>
+    </div>
+  </div>`;
+}
+
 function playerRow(pl, idx, total, teamId, pos, canDelete) {
   const key = esc(teamId + '_' + pos);
   const si  = slotInfo(idx, pos);
@@ -1045,11 +1115,11 @@ function playerRow(pl, idx, total, teamId, pos, canDelete) {
     <div class="pr" draggable="true"
       data-pr="1" data-key="${key}"
       data-tid="${esc(teamId)}" data-pos="${esc(pos)}" data-idx="${idx}">
-      <span class="pr-rank">#${idx+1}</span>
-      <span class="pr-grip">⠿</span>
+      <span class="pr-rank">${idx+1}</span>
+      <div class="pr-avatar pr-avatar-${esc(pos)}">${pl.name.split(' ').map(w=>w[0]||'').slice(0,2).join('').toUpperCase()}</div>
       <div class="pr-info">
         <div class="pr-name">${esc(pl.name)}</div>
-        <div class="pr-meta">${meta} <span class="sl ${si.cls}">${si.text}</span></div>
+        <div class="pr-meta">${meta} · <span class="sl ${si.cls}">${si.text}</span></div>
       </div>
       <div class="pr-right">
         <div class="mv">
@@ -1187,6 +1257,7 @@ function renderMyTeam() {
         <button class="btn btn-gold" data-act="open-add" data-tid="${esc(my.id)}">+ Add Player</button>
       </div>
     </div>
+    ${rosterSummaryCard(my)}
     ${sfx    ? '<div class="alert alert-info" style="margin-bottom:16px">⚡ <strong>Superflex:</strong> QBs have 2 starter slots.</div>' : ''}
     ${idpFlx ? '<div class="alert alert-info" style="margin-bottom:16px">🛡️ <strong>IDP Flex:</strong> LBs have 2 starter slots.</div>' : ''}
     ${teamPositions(my.id, true)}
