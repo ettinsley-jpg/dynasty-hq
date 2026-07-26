@@ -277,14 +277,60 @@
     body[data-facility="0"] .nav-logo{color:#f5c840}
     body[data-facility="0"] .nav-logo span{color:#f5c840;opacity:.8}
     body[data-facility="0"] .nav-tab{
-      background:repeating-linear-gradient(180deg,transparent,transparent 3px,rgba(0,0,0,.09) 3px,rgba(0,0,0,.09) 4px),linear-gradient(180deg,#a07820 0%,#7a5208 52%,#5c3e08 100%);
-      border:1px solid #3a2006;border-bottom:none;border-radius:3px 3px 0 0;margin-right:3px;
+      background-image:
+        /* left nail */
+        radial-gradient(circle at 9px 50%, rgba(18,5,0,.75) 2px, rgba(70,38,6,.95) 4px, rgba(50,24,4,.6) 5px, transparent 6px),
+        /* right nail */
+        radial-gradient(circle at calc(100% - 9px) 50%, rgba(18,5,0,.75) 2px, rgba(70,38,6,.95) 4px, rgba(50,24,4,.6) 5px, transparent 6px),
+        /* knot */
+        radial-gradient(ellipse 13px 20px at 72% 55%, rgba(40,10,0,.42) 0%, rgba(55,18,0,.2) 50%, transparent 72%),
+        /* grain lines — alternating angles for waviness */
+        linear-gradient(179deg, transparent 3px, rgba(0,0,0,.13) 3px, rgba(0,0,0,.13) 4.5px, transparent 4.5px),
+        linear-gradient(181deg, transparent 8px, rgba(0,0,0,.09) 8px, rgba(0,0,0,.09) 9px,   transparent 9px),
+        linear-gradient(179deg, transparent 13px,rgba(0,0,0,.15) 13px,rgba(0,0,0,.15) 14.5px,transparent 14.5px),
+        linear-gradient(180deg, transparent 18px,rgba(0,0,0,.07) 18px,rgba(0,0,0,.07) 19px,  transparent 19px),
+        linear-gradient(181deg, transparent 23px,rgba(0,0,0,.11) 23px,rgba(0,0,0,.11) 24px,  transparent 24px),
+        linear-gradient(179deg, transparent 28px,rgba(0,0,0,.09) 28px,rgba(0,0,0,.09) 29px,  transparent 29px),
+        /* plank base: bright top edge → mid oak → dark bottom edge */
+        linear-gradient(180deg, #c8903c 0%,#c8903c 2px,#aa7228 8%,#9a6420 45%,#8a5618 80%,#6a3e10 98%,#5a3008 100%);
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+      border:1px solid #3a1e06;border-bottom:none;border-radius:3px 3px 0 0;margin-right:3px;
       color:#f5e0a0!important;font-family:'Courier New',monospace;letter-spacing:.1em;text-transform:uppercase;font-size:10.5px!important;
-      text-shadow:0 1px 2px rgba(0,0,0,.8),0 0 6px rgba(245,208,80,.15);
-      box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 2px 0 0 rgba(255,255,255,.03);
+      text-shadow:1px 1px 2px rgba(0,0,0,.95),0 0 6px rgba(245,208,80,.1);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 2px 0 0 rgba(0,0,0,.18),inset -2px 0 0 rgba(0,0,0,.1);
     }
-    body[data-facility="0"] .nav-tab:hover{color:#ffe090!important;background:repeating-linear-gradient(180deg,transparent,transparent 3px,rgba(0,0,0,.07) 3px,rgba(0,0,0,.07) 4px),linear-gradient(180deg,#b08830 0%,#8a6018 52%,#6c4c18 100%)}
-    body[data-facility="0"] .nav-tab.active{color:#f5c840!important;border-bottom-color:transparent;background:repeating-linear-gradient(180deg,transparent,transparent 3px,rgba(0,0,0,.05) 3px,rgba(0,0,0,.05) 4px),linear-gradient(180deg,#c09038 0%,#9a7020 52%,#785618 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 0 8px rgba(245,200,64,.12)}
+    body[data-facility="0"] .nav-tab:hover{
+      color:#ffe090!important;
+      background-image:
+        radial-gradient(circle at 9px 50%, rgba(18,5,0,.75) 2px, rgba(70,38,6,.95) 4px, rgba(50,24,4,.6) 5px, transparent 6px),
+        radial-gradient(circle at calc(100% - 9px) 50%, rgba(18,5,0,.75) 2px, rgba(70,38,6,.95) 4px, rgba(50,24,4,.6) 5px, transparent 6px),
+        radial-gradient(ellipse 13px 20px at 72% 55%, rgba(40,10,0,.38) 0%, rgba(55,18,0,.18) 50%, transparent 72%),
+        linear-gradient(179deg, transparent 3px, rgba(0,0,0,.11) 3px, rgba(0,0,0,.11) 4.5px, transparent 4.5px),
+        linear-gradient(181deg, transparent 8px, rgba(0,0,0,.08) 8px, rgba(0,0,0,.08) 9px,   transparent 9px),
+        linear-gradient(179deg, transparent 13px,rgba(0,0,0,.13) 13px,rgba(0,0,0,.13) 14.5px,transparent 14.5px),
+        linear-gradient(180deg, transparent 18px,rgba(0,0,0,.06) 18px,rgba(0,0,0,.06) 19px,  transparent 19px),
+        linear-gradient(181deg, transparent 23px,rgba(0,0,0,.10) 23px,rgba(0,0,0,.10) 24px,  transparent 24px),
+        linear-gradient(179deg, transparent 28px,rgba(0,0,0,.08) 28px,rgba(0,0,0,.08) 29px,  transparent 29px),
+        linear-gradient(180deg, #d8a040 0%,#d8a040 2px,#ba8030 8%,#aa7228 45%,#9a6220 80%,#7a4e18 98%,#6a3e10 100%);
+      background-size:100% 100%;background-repeat:no-repeat;
+    }
+    body[data-facility="0"] .nav-tab.active{
+      color:#f5c840!important;border-bottom-color:transparent;
+      background-image:
+        radial-gradient(circle at 9px 50%, rgba(18,5,0,.75) 2px, rgba(70,38,6,.95) 4px, rgba(50,24,4,.6) 5px, transparent 6px),
+        radial-gradient(circle at calc(100% - 9px) 50%, rgba(18,5,0,.75) 2px, rgba(70,38,6,.95) 4px, rgba(50,24,4,.6) 5px, transparent 6px),
+        radial-gradient(ellipse 13px 20px at 72% 55%, rgba(40,10,0,.32) 0%, rgba(55,18,0,.14) 50%, transparent 72%),
+        linear-gradient(179deg, transparent 3px, rgba(0,0,0,.09) 3px, rgba(0,0,0,.09) 4.5px, transparent 4.5px),
+        linear-gradient(181deg, transparent 8px, rgba(0,0,0,.07) 8px, rgba(0,0,0,.07) 9px,   transparent 9px),
+        linear-gradient(179deg, transparent 13px,rgba(0,0,0,.11) 13px,rgba(0,0,0,.11) 14.5px,transparent 14.5px),
+        linear-gradient(180deg, transparent 18px,rgba(0,0,0,.05) 18px,rgba(0,0,0,.05) 19px,  transparent 19px),
+        linear-gradient(181deg, transparent 23px,rgba(0,0,0,.08) 23px,rgba(0,0,0,.08) 24px,  transparent 24px),
+        linear-gradient(179deg, transparent 28px,rgba(0,0,0,.07) 28px,rgba(0,0,0,.07) 29px,  transparent 29px),
+        linear-gradient(180deg, #e8b848 0%,#e8b848 2px,#c89038 8%,#ba7a28 45%,#aa6a20 80%,#8a5018 98%,#7a4010 100%);
+      background-size:100% 100%;background-repeat:no-repeat;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 0 8px rgba(245,200,64,.18);
+    }
     body[data-facility="0"] .card{background:rgba(18,8,2,.8);border-color:#2a1506}
     body[data-facility="0"] .nav-select{background:#2a1206;color:#f5e0a0;border-color:#3a2006}
 
@@ -2967,7 +3013,7 @@ function renderHiringModal() {
     const isCurrent = currentHire && currentHire.id === c.id;
     return `<div class="hire-candidate${isCurrent?' hire-candidate-current':''}" data-act="hire-confirm" data-cid="${esc(c.id)}" data-role="${esc(c.role)}">
       <div class="hire-candidate-avatar">
-        <img src="${avatarUrl(c.avatarSeed)}" alt="" loading="lazy" onerror="this.style.display='none'">
+        ${staffAvatarSVG(c.role)}
       </div>
       <div>
         <div class="hire-candidate-name">${esc(c.firstName)} ${esc(c.lastName)}${isCurrent?' <span style="color:var(--gold);font-size:10px">(current)</span>':''}</div>
@@ -2990,6 +3036,113 @@ function renderHiringModal() {
       <div class="hire-candidates">${cards}</div>
     </div>
   </div>`;
+}
+
+// ══════════════════════════════════════════════════
+//  STAFF CARD AVATARS  (cel-shaded, role-based)
+// ══════════════════════════════════════════════════
+function staffAvatarSVG(roleId) {
+  const bg = '#0d1220';
+  const avatars = {
+
+    // GM — analytical, round wire glasses, business jacket
+    gm: `<svg viewBox='0 0 44 44' xmlns='http://www.w3.org/2000/svg' style='width:100%;height:100%;display:block'>
+      <circle cx='22' cy='22' r='22' fill='${bg}'/>
+      <path d='M8 18 Q9 8 22 7 Q35 8 36 18 Q30 10 22 10 Q14 10 8 18Z' fill='#1a0a04'/>
+      <path d='M8 18 Q7 13 9 9 Q8 13 8 18Z' fill='#0a0402'/>
+      <ellipse cx='7.5' cy='22' rx='2' ry='3' fill='#e0a870'/>
+      <ellipse cx='36.5' cy='22' rx='2' ry='3' fill='#e0a870'/>
+      <path d='M8 18 Q6 24 7 30 Q10 38 22 40 Q34 38 37 30 Q38 24 36 18 Q32 10 22 10 Q12 10 8 18Z' fill='#f0b880'/>
+      <path d='M8 20 Q6 26 7 32 Q8 28 8 22Z' fill='#c07840' opacity='.7'/>
+      <circle cx='15.5' cy='23' r='5' fill='none' stroke='#1a0a04' stroke-width='1.4'/>
+      <circle cx='28.5' cy='23' r='5' fill='none' stroke='#1a0a04' stroke-width='1.4'/>
+      <line x1='20.5' y1='23' x2='23.5' y2='23' stroke='#1a0a04' stroke-width='1.2'/>
+      <line x1='10.5' y1='22.5' x2='8' y2='22' stroke='#1a0a04' stroke-width='1.1'/>
+      <line x1='33.5' y1='22.5' x2='36' y2='22' stroke='#1a0a04' stroke-width='1.1'/>
+      <circle cx='15.5' cy='23' r='4.5' fill='rgba(136,170,204,.18)'/>
+      <circle cx='28.5' cy='23' r='4.5' fill='rgba(136,170,204,.18)'/>
+      <circle cx='15.5' cy='23' r='2.4' fill='#1a1008'/>
+      <circle cx='28.5' cy='23' r='2.4' fill='#1a1008'/>
+      <circle cx='14.5' cy='22' r='.9' fill='white' opacity='.8'/>
+      <circle cx='27.5' cy='22' r='.9' fill='white' opacity='.8'/>
+      <path d='M10 17 Q15.5 15 21 17' stroke='#1a0a04' stroke-width='1.8' fill='none' stroke-linecap='round'/>
+      <path d='M23 17 Q28.5 15 34 17' stroke='#1a0a04' stroke-width='1.8' fill='none' stroke-linecap='round'/>
+      <ellipse cx='19' cy='29' rx='1.4' ry='1' fill='#c07840'/>
+      <ellipse cx='25' cy='29' rx='1.4' ry='1' fill='#c07840'/>
+      <path d='M16 33 Q22 36 28 33' stroke='#1a1a1a' stroke-width='1.2' fill='none' stroke-linecap='round'/>
+      <path d='M6 44 Q9 37 16 35 Q19 39 22 40 Q25 39 28 35 Q35 37 38 44Z' fill='#2a2a3a'/>
+      <path d='M16 35 Q19 40 22 41 Q25 40 28 35 Q26 38 22 39 Q18 38 16 35Z' fill='#f0f0f0'/>
+      <path d='M16 35 Q13 40 9 44' stroke='#1a1a2a' stroke-width='1.4' fill='none'/>
+      <path d='M28 35 Q31 40 35 44' stroke='#1a1a2a' stroke-width='1.4' fill='none'/>
+    </svg>`,
+
+    // Coach — baseball cap, intense wide eyes, athletic polo collar
+    coach: `<svg viewBox='0 0 44 44' xmlns='http://www.w3.org/2000/svg' style='width:100%;height:100%;display:block'>
+      <circle cx='22' cy='22' r='22' fill='${bg}'/>
+      <path d='M8 17 Q9 6 22 5 Q35 6 36 17 Q30 11 22 11 Q14 11 8 17Z' fill='#1e2840'/>
+      <path d='M6 17 Q8 15 22 14 Q36 15 38 17 L40 19 Q36 18 22 17 Q8 18 4 19Z' fill='#141c2e' stroke='#0a1020' stroke-width='.6'/>
+      <path d='M8 17 Q15 15 22 15 Q29 15 36 17 Q30 16 22 16 Q14 16 8 17Z' fill='#263450'/>
+      <circle cx='22' cy='6' r='2' fill='#263450'/>
+      <ellipse cx='7.5' cy='24' rx='2' ry='3' fill='#d09060'/>
+      <ellipse cx='36.5' cy='24' rx='2' ry='3' fill='#d09060'/>
+      <path d='M17 37 L17 41 Q20 43 22 43 Q24 43 27 41 L27 37 Q24 39 22 39 Q20 39 17 37Z' fill='#c08050'/>
+      <path d='M8 17 Q6 24 7 30 Q10 38 22 41 Q34 38 37 30 Q38 24 36 17' fill='#d09060' stroke='#1a1a1a' stroke-width='1.8'/>
+      <path d='M8 19 Q6 26 7 32 Q8 28 9 22Z' fill='#a06030' opacity='.7'/>
+      <path d='M9 25 Q18 19 27 25 Q18 31 9 25Z' fill='white' stroke='#1a1a1a' stroke-width='1.5'/>
+      <path d='M19 25 Q28 19 37 25 Q28 31 19 25Z' fill='white' stroke='#1a1a1a' stroke-width='1.5'/>
+      <circle cx='18' cy='25' r='3.5' fill='#1a0a04'/>
+      <circle cx='28' cy='25' r='3.5' fill='#1a0a04'/>
+      <circle cx='17' cy='24' r='1.2' fill='white' opacity='.8'/>
+      <circle cx='27' cy='24' r='1.2' fill='white' opacity='.8'/>
+      <path d='M9 25 Q18 19 27 25' stroke='#1a1a1a' stroke-width='1.8' fill='none'/>
+      <path d='M19 25 Q28 19 37 25' stroke='#1a1a1a' stroke-width='1.8' fill='none'/>
+      <path d='M9 27 Q18 31 27 27' stroke='#1a1a1a' stroke-width='1.2' fill='none'/>
+      <path d='M19 27 Q28 31 37 27' stroke='#1a1a1a' stroke-width='1.2' fill='none'/>
+      <path d='M9 20 Q18 17 27 20' stroke='#3a1808' stroke-width='2.4' fill='none' stroke-linecap='round'/>
+      <path d='M19 20 Q28 17 37 20' stroke='#3a1808' stroke-width='2.4' fill='none' stroke-linecap='round'/>
+      <ellipse cx='18' cy='31' rx='1.4' ry='1' fill='#a06030'/>
+      <ellipse cx='25' cy='31' rx='1.4' ry='1' fill='#a06030'/>
+      <path d='M14 35 Q22 33 30 35' stroke='#1a1a1a' stroke-width='1.3' fill='none' stroke-linecap='round'/>
+      <path d='M6 44 Q9 38 17 36 Q20 40 22 41 Q24 40 27 36 Q35 38 38 44Z' fill='#2a4070'/>
+      <path d='M17 36 Q20 41 22 42 Q24 41 27 36 Q25 39 22 40 Q19 39 17 36Z' fill='#3a5080'/>
+    </svg>`,
+
+    // Scout — tousled brown hair, curious raised brows, field-jacket collar
+    scout: `<svg viewBox='0 0 44 44' xmlns='http://www.w3.org/2000/svg' style='width:100%;height:100%;display:block'>
+      <circle cx='22' cy='22' r='22' fill='${bg}'/>
+      <path d='M7 18 Q8 8 22 6 Q36 8 37 18 Q30 9 22 9 Q14 9 7 18Z' fill='#7a4818'/>
+      <path d='M9 12 Q7 8 10 6' stroke='#6a3c10' stroke-width='2.5' fill='none' stroke-linecap='round'/>
+      <path d='M14 8 Q12 5 15 4' stroke='#6a3c10' stroke-width='2' fill='none' stroke-linecap='round'/>
+      <path d='M32 8 Q34 5 33 4' stroke='#6a3c10' stroke-width='2' fill='none' stroke-linecap='round'/>
+      <path d='M7 18 Q6 12 9 8 Q7 13 7 18Z' fill='#5a3008'/>
+      <ellipse cx='7' cy='23' rx='2.2' ry='3' fill='#e0a860'/>
+      <ellipse cx='37' cy='23' rx='2.2' ry='3' fill='#e0a860'/>
+      <path d='M7 18 Q5 24 6 30 Q9 39 22 41 Q35 39 38 30 Q39 24 37 18 Q32 9 22 9 Q12 9 7 18Z' fill='#eba860'/>
+      <path d='M7 20 Q5 26 6 32 Q7 28 8 22Z' fill='#b07830' opacity='.75'/>
+      <path d='M10 35 Q16 39 22 40 Q28 39 34 35 Q28 38 22 39 Q16 38 10 35Z' fill='rgba(80,40,10,.22)'/>
+      <path d='M9 22 Q18 16 27 22 Q18 29 9 22Z' fill='white' stroke='#1a1a1a' stroke-width='1.5'/>
+      <path d='M17 22 Q26 16 35 22 Q26 29 17 22Z' fill='white' stroke='#1a1a1a' stroke-width='1.5'/>
+      <circle cx='18' cy='22' r='3.8' fill='#3a2010'/>
+      <circle cx='26' cy='22' r='3.8' fill='#3a2010'/>
+      <circle cx='17' cy='21' r='1.3' fill='white' opacity='.8'/>
+      <circle cx='25' cy='21' r='1.3' fill='white' opacity='.8'/>
+      <path d='M9 22 Q18 16 27 22' stroke='#1a1a1a' stroke-width='1.8' fill='none'/>
+      <path d='M17 22 Q26 16 35 22' stroke='#1a1a1a' stroke-width='1.8' fill='none'/>
+      <path d='M9 24 Q18 28 27 24' stroke='#1a1a1a' stroke-width='1.2' fill='none'/>
+      <path d='M17 24 Q26 28 35 24' stroke='#1a1a1a' stroke-width='1.2' fill='none'/>
+      <path d='M9 17 Q18 13 27 17' stroke='#6a3c10' stroke-width='2.2' fill='none' stroke-linecap='round'/>
+      <path d='M17 17 Q26 13 35 17' stroke='#6a3c10' stroke-width='2.2' fill='none' stroke-linecap='round'/>
+      <ellipse cx='18.5' cy='28' rx='1.6' ry='1.1' fill='#b07830'/>
+      <ellipse cx='25.5' cy='28' rx='1.6' ry='1.1' fill='#b07830'/>
+      <path d='M14 32 Q22 37 30 32 Q22 35 14 32Z' fill='#c07050' stroke='#1a1a1a' stroke-width='1.2'/>
+      <path d='M14 32 Q22 35 30 32' stroke='#1a1a1a' stroke-width='1' fill='none' stroke-linecap='round'/>
+      <path d='M5 44 Q8 37 15 35 Q18 40 22 41 Q26 40 29 35 Q36 37 39 44Z' fill='#4a5838'/>
+      <path d='M15 35 Q18 41 22 42 Q26 41 29 35 Q27 39 22 40 Q17 39 15 35Z' fill='#5a6848'/>
+      <path d='M15 35 Q12 40 8 44' stroke='#3a4828' stroke-width='1.4' fill='none'/>
+      <path d='M29 35 Q32 40 36 44' stroke='#3a4828' stroke-width='1.4' fill='none'/>
+    </svg>`,
+  };
+  return avatars[roleId] || avatars.gm;
 }
 
 // ══════════════════════════════════════════════════
@@ -3389,7 +3542,7 @@ function renderCommandCenter() {
       const xpPct = Math.min(100, (totalXp / 100) * 100);
       return `<div class="staff-card" data-act="open-hire-modal" title="Click to manage staff">
         <div class="staff-card-avatar">
-          <img src="${avatarUrl(hire.avatarSeed)}" alt="" loading="lazy" onerror="this.style.display='none'">
+          ${staffAvatarSVG(role.id)}
         </div>
         <div class="staff-card-body">
           <div class="staff-card-name">${esc(hire.firstName)} ${esc(hire.lastName)}</div>
