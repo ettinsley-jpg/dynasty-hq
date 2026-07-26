@@ -263,13 +263,68 @@
     /* holographic left screen */
     .facility-5::after{content:'';position:absolute;bottom:8%;left:8%;width:22%;height:40%;background:linear-gradient(160deg,rgba(0,200,255,.08) 0%,rgba(0,100,200,.04) 100%);border:1px solid rgba(0,200,255,.25);border-radius:4px;box-shadow:0 0 20px rgba(0,200,255,.12),inset 0 0 30px rgba(0,180,255,.04);transform:perspective(400px) rotateY(8deg);pointer-events:none}
 
-    /* ── Body backgrounds per facility level ─────── */
-    body[data-facility="0"]{background:radial-gradient(ellipse at 50% 0%,#c87808 0%,#7a3804 18%,#2a1204 42%,#0e0602 100%)}
-    body[data-facility="1"]{background:repeating-linear-gradient(0deg,transparent,transparent 30px,rgba(60,30,5,.08) 30px,rgba(60,30,5,.08) 32px),repeating-linear-gradient(90deg,transparent,transparent 30px,rgba(60,30,5,.06) 30px,rgba(60,30,5,.06) 32px),linear-gradient(160deg,#8a5820 0%,#6a3e10 100%)}
+    /* ── Body backgrounds + full theme overrides per facility level ─── */
+
+    /* Level 0 – Broom Closet: bare incandescent bulb, warm amber everywhere */
+    body[data-facility="0"] {
+      --bg:#1e0c04; --bg2:#2a1608; --bg3:#321c0c;
+      --card:rgba(160,90,18,.24); --border:rgba(210,150,55,.28);
+      --text:#f8e4b0; --muted:#c8a060; --gold:#f0b020; --gold-dk:#6a3a08;
+      background:
+        radial-gradient(ellipse 100% 65% at 50% -5%,#f8bc30 0%,#d88510 8%,#9c5c12 18%,#5c3008 36%,#2a1206 58%,#160a02 100%);
+    }
+    /* Level 0 component overrides */
+    body[data-facility="0"] .lo-card{background:rgba(200,120,20,.14);border-color:rgba(210,150,55,.24)}
+    body[data-facility="0"] .lo-card:hover{background:rgba(230,145,35,.22);border-color:rgba(240,175,65,.4);transform:translateY(-1px)}
+    body[data-facility="0"] .lo-card-active{background:rgba(240,165,45,.22)!important;border-color:var(--gold)!important}
+    body[data-facility="0"] .staff-desk{background:rgba(160,88,14,.2);border-color:rgba(200,140,45,.22)}
+    body[data-facility="0"] .marge-bubble{background:#e8c660;color:#3a1e06}
+    body[data-facility="0"] .marge-bubble::before{border-top-color:#e8c660}
+    body[data-facility="0"] .bubble-name{color:#7a4010}
+    body[data-facility="0"] .cc-facility-badge{color:#d09838;background:rgba(200,140,50,.2);border-color:rgba(210,150,55,.3)}
+    body[data-facility="0"] .cc-title{color:var(--gold)}
+    body[data-facility="0"] .staff-card{background:rgba(180,100,18,.18);border-color:rgba(200,140,50,.22)}
+    body[data-facility="0"] .staff-card:hover{border-color:var(--gold);background:rgba(210,130,30,.26)}
+    body[data-facility="0"] .staff-add-slot{background:rgba(180,100,18,.1);border-color:rgba(200,140,50,.18)}
+    body[data-facility="0"] .staff-add-slot:hover{border-color:var(--gold);background:rgba(210,130,30,.18)}
+    body[data-facility="0"] .btn{border-color:rgba(210,150,55,.4);color:var(--text)}
+    body[data-facility="0"] .nav-select{background:#2a1206;color:#f5e0a0;border-color:#4a2a0a}
+
+    /* Level 1 – Startup Office: cork board, warm office fluorescent */
+    body[data-facility="1"] {
+      --bg:#4a2e0c; --bg2:#5a3a18; --bg3:#6a4820;
+      --card:rgba(210,160,75,.16); --border:rgba(210,160,75,.24);
+      --text:#f8ead0; --muted:#cca870; --gold:#e8b020;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% 0%,rgba(255,220,100,.18) 0%,transparent 60%),
+        repeating-linear-gradient(0deg,transparent,transparent 30px,rgba(60,30,5,.07) 30px,rgba(60,30,5,.07) 32px),
+        repeating-linear-gradient(90deg,transparent,transparent 30px,rgba(60,30,5,.05) 30px,rgba(60,30,5,.05) 32px),
+        linear-gradient(160deg,#8a5820 0%,#6a3e10 100%);
+    }
+    body[data-facility="1"] .lo-card{background:rgba(210,160,75,.13);border-color:rgba(210,160,75,.22)}
+    body[data-facility="1"] .lo-card:hover{background:rgba(230,175,85,.22);border-color:rgba(240,185,90,.38)}
+    body[data-facility="1"] .lo-card-active{background:rgba(240,185,80,.2)!important}
+    body[data-facility="1"] .staff-desk{background:rgba(190,140,55,.16);border-color:rgba(210,160,75,.22)}
+    body[data-facility="1"] .staff-card{background:rgba(200,150,60,.16);border-color:rgba(210,160,75,.2)}
+    body[data-facility="1"] .staff-add-slot{background:rgba(200,150,60,.1);border-color:rgba(210,160,75,.18)}
+
+    /* Level 2 – Mid-Market HQ: cool professional dark */
     body[data-facility="2"]{background:linear-gradient(160deg,#1a2438 0%,#0c1020 100%)}
+
+    /* Level 3 – Major Market: premium dark slate */
     body[data-facility="3"]{background:linear-gradient(160deg,#0e1620 0%,#080e18 100%)}
-    body[data-facility="4"]{background:linear-gradient(160deg,#100e08 0%,#08060402 100%)}
-    body[data-facility="5"]{background:radial-gradient(ellipse at 30% 30%,rgba(0,180,255,.04) 0%,transparent 60%),radial-gradient(ellipse at 70% 70%,rgba(120,0,255,.04) 0%,transparent 60%),#020408}
+
+    /* Level 4 – Dynasty HQ: near-black with warm gold undertone */
+    body[data-facility="4"] {
+      --gold:#f0a010; --border:rgba(180,130,10,.18);
+      background:linear-gradient(160deg,#100e08 0%,#080604 100%);
+    }
+
+    /* Level 5 – The Empire: deep black, holographic accents */
+    body[data-facility="5"] {
+      --gold:rgba(0,220,255,.9); --border:rgba(0,200,255,.15); --muted:rgba(0,200,255,.45);
+      background:radial-gradient(ellipse at 30% 30%,rgba(0,180,255,.05) 0%,transparent 60%),radial-gradient(ellipse at 70% 70%,rgba(120,0,255,.05) 0%,transparent 60%),#020408;
+    }
 
     /* ── Nav themes per facility level ───────────── */
     /* Level 0: wooden boards with spray-paint text */
@@ -3042,104 +3097,172 @@ function renderHiringModal() {
 //  STAFF CARD AVATARS  (cel-shaded, role-based)
 // ══════════════════════════════════════════════════
 function staffAvatarSVG(roleId) {
-  const bg = '#0d1220';
   const avatars = {
 
-    // GM — analytical, round wire glasses, business jacket
+    // GM — jet black swept hair, steel-blue eyes, wire glasses, navy suit
     gm: `<svg viewBox='0 0 44 44' xmlns='http://www.w3.org/2000/svg' style='width:100%;height:100%;display:block'>
-      <circle cx='22' cy='22' r='22' fill='${bg}'/>
-      <path d='M8 18 Q9 8 22 7 Q35 8 36 18 Q30 10 22 10 Q14 10 8 18Z' fill='#1a0a04'/>
-      <path d='M8 18 Q7 13 9 9 Q8 13 8 18Z' fill='#0a0402'/>
-      <ellipse cx='7.5' cy='22' rx='2' ry='3' fill='#e0a870'/>
-      <ellipse cx='36.5' cy='22' rx='2' ry='3' fill='#e0a870'/>
-      <path d='M8 18 Q6 24 7 30 Q10 38 22 40 Q34 38 37 30 Q38 24 36 18 Q32 10 22 10 Q12 10 8 18Z' fill='#f0b880'/>
-      <path d='M8 20 Q6 26 7 32 Q8 28 8 22Z' fill='#c07840' opacity='.7'/>
-      <circle cx='15.5' cy='23' r='5' fill='none' stroke='#1a0a04' stroke-width='1.4'/>
-      <circle cx='28.5' cy='23' r='5' fill='none' stroke='#1a0a04' stroke-width='1.4'/>
-      <line x1='20.5' y1='23' x2='23.5' y2='23' stroke='#1a0a04' stroke-width='1.2'/>
-      <line x1='10.5' y1='22.5' x2='8' y2='22' stroke='#1a0a04' stroke-width='1.1'/>
-      <line x1='33.5' y1='22.5' x2='36' y2='22' stroke='#1a0a04' stroke-width='1.1'/>
-      <circle cx='15.5' cy='23' r='4.5' fill='rgba(136,170,204,.18)'/>
-      <circle cx='28.5' cy='23' r='4.5' fill='rgba(136,170,204,.18)'/>
-      <circle cx='15.5' cy='23' r='2.4' fill='#1a1008'/>
-      <circle cx='28.5' cy='23' r='2.4' fill='#1a1008'/>
-      <circle cx='14.5' cy='22' r='.9' fill='white' opacity='.8'/>
-      <circle cx='27.5' cy='22' r='.9' fill='white' opacity='.8'/>
-      <path d='M10 17 Q15.5 15 21 17' stroke='#1a0a04' stroke-width='1.8' fill='none' stroke-linecap='round'/>
-      <path d='M23 17 Q28.5 15 34 17' stroke='#1a0a04' stroke-width='1.8' fill='none' stroke-linecap='round'/>
-      <ellipse cx='19' cy='29' rx='1.4' ry='1' fill='#c07840'/>
-      <ellipse cx='25' cy='29' rx='1.4' ry='1' fill='#c07840'/>
-      <path d='M16 33 Q22 36 28 33' stroke='#1a1a1a' stroke-width='1.2' fill='none' stroke-linecap='round'/>
-      <path d='M6 44 Q9 37 16 35 Q19 39 22 40 Q25 39 28 35 Q35 37 38 44Z' fill='#2a2a3a'/>
-      <path d='M16 35 Q19 40 22 41 Q25 40 28 35 Q26 38 22 39 Q18 38 16 35Z' fill='#f0f0f0'/>
-      <path d='M16 35 Q13 40 9 44' stroke='#1a1a2a' stroke-width='1.4' fill='none'/>
-      <path d='M28 35 Q31 40 35 44' stroke='#1a1a2a' stroke-width='1.4' fill='none'/>
+      <rect width='44' height='44' fill='#0e1832'/>
+      <polygon points='0,0 28,0 44,16 44,44' fill='#18244a' opacity='.6'/>
+      <polygon points='0,0 16,0 0,16' fill='#243266' opacity='.5'/>
+      <path d='M4 44 Q8 38 18 36 Q20 40 22 41 Q24 40 26 36 Q36 38 40 44Z' fill='#18243c'/>
+      <path d='M18 36 Q20 40.5 22 41.5 Q24 40.5 26 36 Q24 38.5 22 39.5 Q20 38.5 18 36Z' fill='#e8ecf8'/>
+      <path d='M18 36 Q15 40 10 44' stroke='#101830' stroke-width='1.5' fill='none'/>
+      <path d='M26 36 Q29 40 34 44' stroke='#101830' stroke-width='1.5' fill='none'/>
+      <path d='M18 36 L18 39 Q20 41 22 41 Q24 41 26 39 L26 36' fill='#d8a870'/>
+      <path d='M6 20 Q7 9 12 5 Q17 2 22 2 Q27 2 32 5 Q38 9 38 20 Q32 12 22 11 Q12 12 6 20Z' fill='#12101c'/>
+      <path d='M6 18 Q3 10 6 3 Q8 9 9 16Z' fill='#1a1428' stroke='#0a0812' stroke-width='.5'/>
+      <path d='M8 16 Q6 7 10 1 Q12 8 11 14Z' fill='#201c2e' stroke='#0a0812' stroke-width='.5'/>
+      <path d='M11 13 Q10 4 14 0 Q16 7 14 12Z' fill='#12101c' stroke='#0a0812' stroke-width='.5'/>
+      <path d='M15 10 Q14 2 19 -1 Q20 5 18 10Z' fill='#1a1428' stroke='#0a0812' stroke-width='.5'/>
+      <path d='M19 9 Q19 1 24 -1 Q25 5 23 9Z' fill='#12101c' stroke='#0a0812' stroke-width='.5'/>
+      <path d='M23 9 Q24 2 28 0 Q28 6 27 10Z' fill='#1a1428' stroke='#0a0812' stroke-width='.5'/>
+      <path d='M27 11 Q29 4 33 2 Q32 8 30 13Z' fill='#12101c' stroke='#0a0812' stroke-width='.5'/>
+      <path d='M31 15 Q34 7 38 7 Q37 13 35 18Z' fill='#1a1428' stroke='#0a0812' stroke-width='.5'/>
+      <path d='M8 16 Q7 8 9.5 1 Q9 8 8.5 15Z' fill='#3c3454' opacity='.7'/>
+      <path d='M15 10 Q14.5 3 18 -0.5 Q16 5 16 9Z' fill='#3c3454' opacity='.65'/>
+      <path d='M23 9 Q23.5 3 27 0 Q26 5 25.5 9Z' fill='#3c3454' opacity='.6'/>
+      <path d='M7 20 Q6 27 7 33 Q10 42 22 43 Q34 42 37 33 Q38 27 37 20 Q32 12 22 12 Q12 12 7 20Z' fill='#e0b888'/>
+      <path d='M7 22 Q6 29 7 35 Q8 31 8.5 24Z' fill='#b89060' opacity='.6'/>
+      <ellipse cx='22' cy='17' rx='8' ry='4' fill='#f0cc9c' opacity='.25'/>
+      <path d='M6 26 Q5 28 5 30 Q5 33 7 34 Q8.5 32 8.5 30 Q8.5 27 6 26Z' fill='#d0a070' stroke='#1a0a08' stroke-width='.8'/>
+      <path d='M38 26 Q39 28 39 30 Q39 33 37 34 Q35.5 32 35.5 30 Q35.5 27 38 26Z' fill='#d0a070' stroke='#1a0a08' stroke-width='.8'/>
+      <rect x='8.5' y='21' width='11.5' height='8.5' rx='2' fill='rgba(140,190,240,.08)' stroke='#2a1808' stroke-width='1.4'/>
+      <rect x='24' y='21' width='11.5' height='8.5' rx='2' fill='rgba(140,190,240,.08)' stroke='#2a1808' stroke-width='1.4'/>
+      <line x1='20' y1='25' x2='24' y2='25' stroke='#2a1808' stroke-width='1.2'/>
+      <line x1='8.5' y1='24.5' x2='6.5' y2='24' stroke='#2a1808' stroke-width='1'/>
+      <line x1='35.5' y1='24.5' x2='37.5' y2='24' stroke='#2a1808' stroke-width='1'/>
+      <path d='M10 25 Q14.2 20 19.5 25 Q14.2 29.5 10 25Z' fill='#f8f8ff'/>
+      <ellipse cx='14.8' cy='25' rx='3' ry='3.4' fill='#3a5888'/>
+      <ellipse cx='14.8' cy='25.3' rx='1.9' ry='2.2' fill='#0e1624'/>
+      <ellipse cx='13.5' cy='23.4' rx='1.5' ry='1.2' fill='white' opacity='.92'/>
+      <circle cx='17' cy='26.5' r='.65' fill='white' opacity='.6'/>
+      <path d='M10 25 Q14.2 20 19.5 25' stroke='#0a0810' stroke-width='2' fill='none' stroke-linecap='round'/>
+      <path d='M10.5 25.5 Q14.5 29 19 25.5' stroke='#1a1020' stroke-width='.85' fill='none' stroke-linecap='round'/>
+      <path d='M24.5 25 Q29 20 35 25 Q29 29.5 24.5 25Z' fill='#f8f8ff'/>
+      <ellipse cx='29.5' cy='25' rx='3' ry='3.4' fill='#3a5888'/>
+      <ellipse cx='29.5' cy='25.3' rx='1.9' ry='2.2' fill='#0e1624'/>
+      <ellipse cx='28.2' cy='23.4' rx='1.5' ry='1.2' fill='white' opacity='.92'/>
+      <circle cx='31.8' cy='26.5' r='.65' fill='white' opacity='.6'/>
+      <path d='M24.5 25 Q29 20 35 25' stroke='#0a0810' stroke-width='2' fill='none' stroke-linecap='round'/>
+      <path d='M25 25.5 Q29 29 34.5 25.5' stroke='#1a1020' stroke-width='.85' fill='none' stroke-linecap='round'/>
+      <path d='M9 20 Q14.5 18 20 20' stroke='#12101c' stroke-width='2.2' fill='none' stroke-linecap='round'/>
+      <path d='M24 20 Q29.5 18 36 20' stroke='#12101c' stroke-width='2.2' fill='none' stroke-linecap='round'/>
+      <path d='M20.5 32 Q22 33.5 23.5 32' stroke='#b89060' stroke-width='1.1' fill='none' stroke-linecap='round'/>
+      <circle cx='20' cy='32.8' r='.8' fill='#b89060' opacity='.6'/>
+      <circle cx='24' cy='32.8' r='.8' fill='#b89060' opacity='.6'/>
+      <path d='M16.5 36.5 Q19.5 35 22 35.5 Q24.5 35 27.5 36.5' stroke='#c07060' stroke-width='1.2' fill='none' stroke-linecap='round'/>
+      <path d='M17 36.5 Q22 39.5 27 36.5' fill='#d09070' stroke='#c07060' stroke-width='.8'/>
     </svg>`,
 
-    // Coach — baseball cap, intense wide eyes, athletic polo collar
+    // Coach — wild dark spikes, amber-gold intense eyes, crimson bg, athletic jacket
     coach: `<svg viewBox='0 0 44 44' xmlns='http://www.w3.org/2000/svg' style='width:100%;height:100%;display:block'>
-      <circle cx='22' cy='22' r='22' fill='${bg}'/>
-      <path d='M8 17 Q9 6 22 5 Q35 6 36 17 Q30 11 22 11 Q14 11 8 17Z' fill='#1e2840'/>
-      <path d='M6 17 Q8 15 22 14 Q36 15 38 17 L40 19 Q36 18 22 17 Q8 18 4 19Z' fill='#141c2e' stroke='#0a1020' stroke-width='.6'/>
-      <path d='M8 17 Q15 15 22 15 Q29 15 36 17 Q30 16 22 16 Q14 16 8 17Z' fill='#263450'/>
-      <circle cx='22' cy='6' r='2' fill='#263450'/>
-      <ellipse cx='7.5' cy='24' rx='2' ry='3' fill='#d09060'/>
-      <ellipse cx='36.5' cy='24' rx='2' ry='3' fill='#d09060'/>
-      <path d='M17 37 L17 41 Q20 43 22 43 Q24 43 27 41 L27 37 Q24 39 22 39 Q20 39 17 37Z' fill='#c08050'/>
-      <path d='M8 17 Q6 24 7 30 Q10 38 22 41 Q34 38 37 30 Q38 24 36 17' fill='#d09060' stroke='#1a1a1a' stroke-width='1.8'/>
-      <path d='M8 19 Q6 26 7 32 Q8 28 9 22Z' fill='#a06030' opacity='.7'/>
-      <path d='M9 25 Q18 19 27 25 Q18 31 9 25Z' fill='white' stroke='#1a1a1a' stroke-width='1.5'/>
-      <path d='M19 25 Q28 19 37 25 Q28 31 19 25Z' fill='white' stroke='#1a1a1a' stroke-width='1.5'/>
-      <circle cx='18' cy='25' r='3.5' fill='#1a0a04'/>
-      <circle cx='28' cy='25' r='3.5' fill='#1a0a04'/>
-      <circle cx='17' cy='24' r='1.2' fill='white' opacity='.8'/>
-      <circle cx='27' cy='24' r='1.2' fill='white' opacity='.8'/>
-      <path d='M9 25 Q18 19 27 25' stroke='#1a1a1a' stroke-width='1.8' fill='none'/>
-      <path d='M19 25 Q28 19 37 25' stroke='#1a1a1a' stroke-width='1.8' fill='none'/>
-      <path d='M9 27 Q18 31 27 27' stroke='#1a1a1a' stroke-width='1.2' fill='none'/>
-      <path d='M19 27 Q28 31 37 27' stroke='#1a1a1a' stroke-width='1.2' fill='none'/>
-      <path d='M9 20 Q18 17 27 20' stroke='#3a1808' stroke-width='2.4' fill='none' stroke-linecap='round'/>
-      <path d='M19 20 Q28 17 37 20' stroke='#3a1808' stroke-width='2.4' fill='none' stroke-linecap='round'/>
-      <ellipse cx='18' cy='31' rx='1.4' ry='1' fill='#a06030'/>
-      <ellipse cx='25' cy='31' rx='1.4' ry='1' fill='#a06030'/>
-      <path d='M14 35 Q22 33 30 35' stroke='#1a1a1a' stroke-width='1.3' fill='none' stroke-linecap='round'/>
-      <path d='M6 44 Q9 38 17 36 Q20 40 22 41 Q24 40 27 36 Q35 38 38 44Z' fill='#2a4070'/>
-      <path d='M17 36 Q20 41 22 42 Q24 41 27 36 Q25 39 22 40 Q19 39 17 36Z' fill='#3a5080'/>
+      <rect width='44' height='44' fill='#1e0608'/>
+      <polygon points='0,0 30,0 44,14 44,44' fill='#2a0a0c' opacity='.65'/>
+      <polygon points='0,44 16,44 0,28' fill='#3a1010' opacity='.45'/>
+      <path d='M4 44 Q8 37 18 35 Q20 40 22 41 Q24 40 26 35 Q36 37 40 44Z' fill='#1c2840'/>
+      <path d='M18 35 Q20 40.5 22 41.5 Q24 40.5 26 35 Q24 38 22 39 Q20 38 18 35Z' fill='#2a3e58'/>
+      <path d='M18 35 Q15 39 10 44' stroke='#121e30' stroke-width='1.5' fill='none'/>
+      <path d='M26 35 Q29 39 34 44' stroke='#121e30' stroke-width='1.5' fill='none'/>
+      <path d='M17 37 Q22 40 27 37' stroke='#364e68' stroke-width='1' fill='none'/>
+      <path d='M18 35 L18 39 Q20 41 22 41 Q24 41 26 39 L26 35' fill='#c08858'/>
+      <path d='M6 21 Q6 9 11 5 Q17 1 22 1 Q27 1 33 5 Q39 10 38 21 Q32 12 22 11 Q12 12 6 21Z' fill='#1c1008'/>
+      <path d='M6 18 Q2 10 5 3 Q8 9 8.5 16Z' fill='#281808' stroke='#100c04' stroke-width='.5'/>
+      <path d='M8 15 Q5 6 9 1 Q11 7 11 14Z' fill='#1c1008' stroke='#100c04' stroke-width='.5'/>
+      <path d='M11 12 Q10 3 14 -0.5 Q16 6 14 11Z' fill='#281808' stroke='#100c04' stroke-width='.5'/>
+      <path d='M15 9 Q15 1 20 -1.5 Q21 5 19 9Z' fill='#1c1008' stroke='#100c04' stroke-width='.5'/>
+      <path d='M20 9 Q21 1 26 -1.5 Q26 5 25 9Z' fill='#281808' stroke='#100c04' stroke-width='.5'/>
+      <path d='M25 10 Q28 2 32 1 Q31 7 30 12Z' fill='#1c1008' stroke='#100c04' stroke-width='.5'/>
+      <path d='M30 13 Q34 5 38 4 Q37 10 35 17Z' fill='#281808' stroke='#100c04' stroke-width='.5'/>
+      <path d='M35 18 Q38 10 43 10 Q40 15 37 20Z' fill='#1c1008' stroke='#100c04' stroke-width='.5'/>
+      <path d='M8 15 Q7 7 9 1 Q8.5 7 8.5 14Z' fill='#3c2c1c' opacity='.75'/>
+      <path d='M15 9 Q15.5 2 20 -1 Q18 4 18.5 8Z' fill='#3c2c1c' opacity='.7'/>
+      <path d='M25 10 Q26.5 3 30 0 Q29 5 28.5 9Z' fill='#3c2c1c' opacity='.65'/>
+      <path d='M7 21 Q5 28 6 34 Q9 43 22 44 Q35 43 38 34 Q39 28 37 21 Q32 13 22 13 Q12 13 7 21Z' fill='#c88858'/>
+      <path d='M7 23 Q5 30 6 36 Q7.5 32 9 25Z' fill='#9a6030' opacity='.7'/>
+      <ellipse cx='22' cy='18' rx='8' ry='4' fill='#dca070' opacity='.25'/>
+      <path d='M7 27 Q5 29 5 31 Q5 34 7 35 Q8.5 33 8.5 31 Q8.5 29 7 27Z' fill='#b87848' stroke='#1a0a04' stroke-width='.8'/>
+      <path d='M37 27 Q39 29 39 31 Q39 34 37 35 Q35.5 33 35.5 31 Q35.5 29 37 27Z' fill='#b87848' stroke='#1a0a04' stroke-width='.8'/>
+      <path d='M9 26 Q14 20 20 26 Q14 31.5 9 26Z' fill='#f8f8f8'/>
+      <ellipse cx='14.5' cy='26' rx='3.3' ry='3.7' fill='#8a5a0a'/>
+      <ellipse cx='14.5' cy='26.3' rx='2.1' ry='2.4' fill='#2a1404'/>
+      <ellipse cx='14.5' cy='26' rx='2.7' ry='3' fill='none' stroke='#c08020' stroke-width='.6' opacity='.55'/>
+      <ellipse cx='13.2' cy='24.3' rx='1.6' ry='1.3' fill='white' opacity='.9'/>
+      <circle cx='16.8' cy='27.8' r='.7' fill='white' opacity='.55'/>
+      <path d='M9 26 Q14 20 20 26' stroke='#0a0804' stroke-width='2.2' fill='none' stroke-linecap='round'/>
+      <path d='M9.5 26.5 Q14 30.5 19.5 26.5' stroke='#1a0e06' stroke-width='.95' fill='none' stroke-linecap='round'/>
+      <circle cx='9.5' cy='26' r='.65' fill='#c04030' opacity='.65'/>
+      <path d='M24 26 Q29.5 20 35 26 Q29.5 31.5 24 26Z' fill='#f8f8f8'/>
+      <ellipse cx='29.5' cy='26' rx='3.3' ry='3.7' fill='#8a5a0a'/>
+      <ellipse cx='29.5' cy='26.3' rx='2.1' ry='2.4' fill='#2a1404'/>
+      <ellipse cx='29.5' cy='26' rx='2.7' ry='3' fill='none' stroke='#c08020' stroke-width='.6' opacity='.55'/>
+      <ellipse cx='28.2' cy='24.3' rx='1.6' ry='1.3' fill='white' opacity='.9'/>
+      <circle cx='32.2' cy='27.8' r='.7' fill='white' opacity='.55'/>
+      <path d='M24 26 Q29.5 20 35 26' stroke='#0a0804' stroke-width='2.2' fill='none' stroke-linecap='round'/>
+      <path d='M24.5 26.5 Q29.5 30.5 34.5 26.5' stroke='#1a0e06' stroke-width='.95' fill='none' stroke-linecap='round'/>
+      <circle cx='34.5' cy='26' r='.65' fill='#c04030' opacity='.65'/>
+      <path d='M8 21 Q14 18 21 21' stroke='#1c1008' stroke-width='2.7' fill='none' stroke-linecap='round'/>
+      <path d='M23 21 Q29 18 37 21' stroke='#1c1008' stroke-width='2.7' fill='none' stroke-linecap='round'/>
+      <path d='M21 22 Q22 21.5 23 22' stroke='#1c1008' stroke-width='1.1' fill='none' opacity='.65'/>
+      <path d='M20 33 Q22 34.5 24 33' stroke='#9a6030' stroke-width='1.3' fill='none' stroke-linecap='round'/>
+      <circle cx='19.5' cy='33.8' r='.9' fill='#9a6030' opacity='.65'/>
+      <circle cx='24.5' cy='33.8' r='.9' fill='#9a6030' opacity='.65'/>
+      <path d='M16 37.5 Q22 35.5 28 37.5' stroke='#b07050' stroke-width='1.4' fill='none' stroke-linecap='round'/>
+      <path d='M16.5 37.5 Q22 40.5 27.5 37.5' fill='#c08060' stroke='#b07050' stroke-width='.8'/>
     </svg>`,
 
-    // Scout — tousled brown hair, curious raised brows, field-jacket collar
+    // Scout — tousled warm brown hair, olive eyes, forest-green bg, field jacket
     scout: `<svg viewBox='0 0 44 44' xmlns='http://www.w3.org/2000/svg' style='width:100%;height:100%;display:block'>
-      <circle cx='22' cy='22' r='22' fill='${bg}'/>
-      <path d='M7 18 Q8 8 22 6 Q36 8 37 18 Q30 9 22 9 Q14 9 7 18Z' fill='#7a4818'/>
-      <path d='M9 12 Q7 8 10 6' stroke='#6a3c10' stroke-width='2.5' fill='none' stroke-linecap='round'/>
-      <path d='M14 8 Q12 5 15 4' stroke='#6a3c10' stroke-width='2' fill='none' stroke-linecap='round'/>
-      <path d='M32 8 Q34 5 33 4' stroke='#6a3c10' stroke-width='2' fill='none' stroke-linecap='round'/>
-      <path d='M7 18 Q6 12 9 8 Q7 13 7 18Z' fill='#5a3008'/>
-      <ellipse cx='7' cy='23' rx='2.2' ry='3' fill='#e0a860'/>
-      <ellipse cx='37' cy='23' rx='2.2' ry='3' fill='#e0a860'/>
-      <path d='M7 18 Q5 24 6 30 Q9 39 22 41 Q35 39 38 30 Q39 24 37 18 Q32 9 22 9 Q12 9 7 18Z' fill='#eba860'/>
-      <path d='M7 20 Q5 26 6 32 Q7 28 8 22Z' fill='#b07830' opacity='.75'/>
-      <path d='M10 35 Q16 39 22 40 Q28 39 34 35 Q28 38 22 39 Q16 38 10 35Z' fill='rgba(80,40,10,.22)'/>
-      <path d='M9 22 Q18 16 27 22 Q18 29 9 22Z' fill='white' stroke='#1a1a1a' stroke-width='1.5'/>
-      <path d='M17 22 Q26 16 35 22 Q26 29 17 22Z' fill='white' stroke='#1a1a1a' stroke-width='1.5'/>
-      <circle cx='18' cy='22' r='3.8' fill='#3a2010'/>
-      <circle cx='26' cy='22' r='3.8' fill='#3a2010'/>
-      <circle cx='17' cy='21' r='1.3' fill='white' opacity='.8'/>
-      <circle cx='25' cy='21' r='1.3' fill='white' opacity='.8'/>
-      <path d='M9 22 Q18 16 27 22' stroke='#1a1a1a' stroke-width='1.8' fill='none'/>
-      <path d='M17 22 Q26 16 35 22' stroke='#1a1a1a' stroke-width='1.8' fill='none'/>
-      <path d='M9 24 Q18 28 27 24' stroke='#1a1a1a' stroke-width='1.2' fill='none'/>
-      <path d='M17 24 Q26 28 35 24' stroke='#1a1a1a' stroke-width='1.2' fill='none'/>
-      <path d='M9 17 Q18 13 27 17' stroke='#6a3c10' stroke-width='2.2' fill='none' stroke-linecap='round'/>
-      <path d='M17 17 Q26 13 35 17' stroke='#6a3c10' stroke-width='2.2' fill='none' stroke-linecap='round'/>
-      <ellipse cx='18.5' cy='28' rx='1.6' ry='1.1' fill='#b07830'/>
-      <ellipse cx='25.5' cy='28' rx='1.6' ry='1.1' fill='#b07830'/>
-      <path d='M14 32 Q22 37 30 32 Q22 35 14 32Z' fill='#c07050' stroke='#1a1a1a' stroke-width='1.2'/>
-      <path d='M14 32 Q22 35 30 32' stroke='#1a1a1a' stroke-width='1' fill='none' stroke-linecap='round'/>
-      <path d='M5 44 Q8 37 15 35 Q18 40 22 41 Q26 40 29 35 Q36 37 39 44Z' fill='#4a5838'/>
-      <path d='M15 35 Q18 41 22 42 Q26 41 29 35 Q27 39 22 40 Q17 39 15 35Z' fill='#5a6848'/>
-      <path d='M15 35 Q12 40 8 44' stroke='#3a4828' stroke-width='1.4' fill='none'/>
-      <path d='M29 35 Q32 40 36 44' stroke='#3a4828' stroke-width='1.4' fill='none'/>
+      <rect width='44' height='44' fill='#081c0e'/>
+      <polygon points='44,0 44,26 28,44 0,44' fill='#0c2414' opacity='.65'/>
+      <polygon points='44,0 44,18 26,0' fill='#102e18' opacity='.45'/>
+      <path d='M4 44 Q8 37 18 35 Q20 40 22 41 Q24 40 26 35 Q36 37 40 44Z' fill='#3a4828'/>
+      <path d='M18 35 Q20 40.5 22 41.5 Q24 40.5 26 35 Q24 38 22 39 Q20 38 18 35Z' fill='#4a5a38'/>
+      <path d='M18 35 Q15 39 10 44' stroke='#2a3818' stroke-width='1.5' fill='none'/>
+      <path d='M26 35 Q29 39 34 44' stroke='#2a3818' stroke-width='1.5' fill='none'/>
+      <rect x='9' y='40' width='6' height='3.5' rx='.8' fill='#303c22' stroke='#222c14' stroke-width='.7'/>
+      <path d='M18 35 L18 39 Q20 41 22 41 Q24 41 26 39 L26 35' fill='#e0b870'/>
+      <path d='M7 20 Q7 9 12 5 Q17 2 22 2 Q27 2 32 5 Q37 9 37 20 Q32 12 22 11 Q12 12 7 20Z' fill='#7a4c1c'/>
+      <path d='M6 18 Q2 11 4 4 Q8 9 8.5 16Z' fill='#8a5824' stroke='#5a3410' stroke-width='.5'/>
+      <path d='M8 15 Q5 7 8 2 Q11 7 10.5 13Z' fill='#6a3c10' stroke='#5a3410' stroke-width='.5'/>
+      <path d='M11 12 Q10 4 14 0 Q16 6 14.5 11Z' fill='#7a4c1c' stroke='#5a3410' stroke-width='.5'/>
+      <path d='M15 10 Q15 2 20 -1 Q21 5 19 9Z' fill='#8a5824' stroke='#5a3410' stroke-width='.5'/>
+      <path d='M20 9 Q21.5 1 26 -1 Q26 5.5 24.5 9Z' fill='#6a3c10' stroke='#5a3410' stroke-width='.5'/>
+      <path d='M25 10 Q27 3 31 2 Q31 8 29 12Z' fill='#7a4c1c' stroke='#5a3410' stroke-width='.5'/>
+      <path d='M30 13 Q33 6 37 6 Q36 12 34 17Z' fill='#8a5824' stroke='#5a3410' stroke-width='.5'/>
+      <path d='M8 15 Q7.5 7 9.5 1 Q9 7 8.5 14Z' fill='#c0843c' opacity='.55'/>
+      <path d='M15 10 Q15.5 3 19 -0.5 Q17 5 17 9Z' fill='#c0843c' opacity='.5'/>
+      <path d='M25 10 Q26.5 4 30 1 Q29 6 28.5 9Z' fill='#c0843c' opacity='.48'/>
+      <path d='M7 20 Q5 27 6 33 Q9 42 22 43 Q35 42 38 33 Q39 27 37 20 Q32 12 22 12 Q12 12 7 20Z' fill='#e8c880'/>
+      <path d='M7 22 Q5 29 6 35 Q7.5 31 9 24Z' fill='#c0a060' opacity='.55'/>
+      <ellipse cx='31' cy='27' rx='5' ry='4' fill='#f4d898' opacity='.2'/>
+      <ellipse cx='22' cy='17' rx='8' ry='4' fill='#f4d898' opacity='.25'/>
+      <path d='M7 26 Q5 28 5 30 Q5 33 7 34 Q8.5 32 8.5 30 Q8.5 28 7 26Z' fill='#d8b068' stroke='#1a0a04' stroke-width='.8'/>
+      <path d='M37 26 Q39 28 39 30 Q39 33 37 34 Q35.5 32 35.5 30 Q35.5 28 37 26Z' fill='#d8b068' stroke='#1a0a04' stroke-width='.8'/>
+      <path d='M9 25 Q14 19.5 20 25 Q14 30.5 9 25Z' fill='#f8f8f8'/>
+      <ellipse cx='14.5' cy='25' rx='3.2' ry='3.5' fill='#3a6830'/>
+      <ellipse cx='14.5' cy='25.3' rx='2' ry='2.3' fill='#0e1e0c'/>
+      <ellipse cx='14.5' cy='25' rx='2.6' ry='2.9' fill='none' stroke='#5a8850' stroke-width='.6' opacity='.55'/>
+      <ellipse cx='13.2' cy='23.4' rx='1.5' ry='1.2' fill='white' opacity='.9'/>
+      <circle cx='16.5' cy='26.5' r='.65' fill='white' opacity='.55'/>
+      <path d='M9 25 Q14 19.5 20 25' stroke='#0a0e08' stroke-width='2' fill='none' stroke-linecap='round'/>
+      <path d='M9.5 25.5 Q14 29.5 19.5 25.5' stroke='#1a1e10' stroke-width='.85' fill='none' stroke-linecap='round'/>
+      <path d='M24 24.5 Q29.5 19 35.5 24.5 Q29.5 30 24 24.5Z' fill='#f8f8f8'/>
+      <ellipse cx='29.8' cy='24.5' rx='3.3' ry='3.6' fill='#3a6830'/>
+      <ellipse cx='29.8' cy='24.8' rx='2.1' ry='2.4' fill='#0e1e0c'/>
+      <ellipse cx='29.8' cy='24.5' rx='2.7' ry='3' fill='none' stroke='#5a8850' stroke-width='.6' opacity='.55'/>
+      <ellipse cx='28.5' cy='22.8' rx='1.6' ry='1.3' fill='white' opacity='.9'/>
+      <circle cx='32.2' cy='26' r='.65' fill='white' opacity='.55'/>
+      <path d='M24 24.5 Q29.5 19 35.5 24.5' stroke='#0a0e08' stroke-width='2' fill='none' stroke-linecap='round'/>
+      <path d='M24.5 25 Q29.5 29 35 25' stroke='#1a1e10' stroke-width='.85' fill='none' stroke-linecap='round'/>
+      <path d='M8 19.5 Q14 17 21 19.5' stroke='#6a3c10' stroke-width='2.1' fill='none' stroke-linecap='round'/>
+      <path d='M23 19 Q29.5 16.5 37 19' stroke='#6a3c10' stroke-width='2.1' fill='none' stroke-linecap='round'/>
+      <path d='M20.5 32 Q22 33.5 23.5 32' stroke='#c0a060' stroke-width='1.1' fill='none' stroke-linecap='round'/>
+      <circle cx='19.5' cy='32.7' r='.85' fill='#c0a060' opacity='.62'/>
+      <circle cx='24.5' cy='32.7' r='.85' fill='#c0a060' opacity='.62'/>
+      <path d='M16 36.5 Q22 34 28 36.5' stroke='#c07860' stroke-width='1.2' fill='none' stroke-linecap='round'/>
+      <path d='M16.5 36.5 Q22 39.5 27.5 36.5' fill='#d09070' stroke='#c07860' stroke-width='.8'/>
+      <path d='M15.5 36.5 Q14.5 38.5 15.5 40.5' stroke='#c0a060' stroke-width='.8' fill='none' stroke-linecap='round' opacity='.45'/>
+      <path d='M28.5 36.5 Q29.5 38.5 28.5 40.5' stroke='#c0a060' stroke-width='.8' fill='none' stroke-linecap='round' opacity='.45'/>
     </svg>`,
   };
   return avatars[roleId] || avatars.gm;
