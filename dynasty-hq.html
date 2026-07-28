@@ -3385,11 +3385,17 @@ function renderAgeCurveFlags(my) {
   const sevIcon   = s => s === 'fire' ? '🔥' : '⚠️';
   const sevLabel  = s => s === 'fire' ? 'SELL NOW' : 'WATCH';
 
+  const isOpen = U.ageCurveOpen !== false;
+
   return `<div style="margin-bottom:20px">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px">
-      🔥 Age Curve Risk Flags — ${summaryParts.join(', ')}
-    </div>
-    <div style="display:flex;flex-direction:column;gap:10px">
+    <button data-act="toggle-age-curve"
+      style="width:100%;display:flex;align-items:center;justify-content:space-between;background:none;border:none;cursor:pointer;padding:0;margin-bottom:${isOpen ? '8px' : '0'}">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">
+        🔥 Age Curve Risk Flags — ${summaryParts.join(', ')}
+      </div>
+      <span style="font-size:11px;color:var(--muted)">${isOpen ? '▲' : '▼'}</span>
+    </button>
+    ${isOpen ? `<div style="display:flex;flex-direction:column;gap:10px">
       ${flagged.map(f => `
       <div style="background:${sevBg(f.severity)};border:1px solid ${sevBorder(f.severity)};border-radius:12px;padding:14px 16px">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
@@ -3429,7 +3435,7 @@ function renderAgeCurveFlags(my) {
           </div>
         </div>
       </div>`).join('')}
-    </div>
+    </div>` : ''}
   </div>`;
 }
 
@@ -7468,6 +7474,9 @@ document.addEventListener('click', e => {
 
     case 'tfv2-mode':
       U.tfv2Mode = btn.dataset.val; render(); break;
+
+    case 'toggle-age-curve':
+      U.ageCurveOpen = !(U.ageCurveOpen !== false); render(); break;
 
     case 'toggle-buy-low':
       U.buyLowOpen = !(U.buyLowOpen !== false); render(); break;
