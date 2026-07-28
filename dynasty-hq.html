@@ -3459,82 +3459,76 @@ function renderBuyLowRadar(my) {
     (t.players || []).forEach(p => { ownerMap[normalizeName(p.name)] = t; });
   });
 
+  const maxAdds = Math.max(...Object.values(trendMap), 1);
   const candidates = [];
 
-  Object.values(INTEL.ecr).forEach(ecr => {
-    if (!SKILL_POS.has(ecr.pos)) return;
-    const key = normalizeName(ecr.name);
-    if (myNames.has(key)) return; // already own them
+  // Iterate opponent roster players by FC value — not ECR — so we catch all dynasty assets
+  S.teams.filter(t => !t.isMyTeam).forEach(ownerTeam => {
+    (ownerTeam.players || []).forEach(rosterEntry => {
+      if (!SKILL_POS.has(rosterEntry.pos)) return;
+      if (myIds.has(rosterEntry.id) || myNames.has(normalizeName(rosterEntry.name))) return;
 
-    // Need FC rank to compute value gap
-    const owner   = ownerMap[key];
-    if (!owner) return; // not on any roster in this league — skip
+      const fc = FC_VALUES[rosterEntry.id];
+      if (!fc || !fc.rank || fc.rank > 200) return; // only top-200 dynasty assets
 
-    // Look up FC value by matching player id from owner's roster
-    const rosterEntry = (owner.players || []).find(p => normalizeName(p.name) === key);
-    if (!rosterEntry) return;
-    const fc = FC_VALUES[rosterEntry.id];
-    if (!fc || !fc.rank) return;
+      const key    = normalizeName(rosterEntry.name);
+      const ecr    = INTEL.ecr[key] || {};
+      const ecrRank = ecr.rank || null;
+      const fcRank  = fc.rank;
+      const age     = ecr.age || rosterEntry.age || null;
+      const pos     = ecr.pos || rosterEntry.pos;
+      const cliff   = POS_CLIFFS[pos];
+      const floor   = PRIME_FLOOR[pos] || 22;
 
-    const ecrRank = ecr.rank;
-    const fcRank  = fc.rank;
-    const age     = ecr.age || rosterEntry.age || null;
-    const cliff   = POS_CLIFFS[ecr.pos];
-    const floor   = PRIME_FLOOR[ecr.pos] || 22;
+      // Signal 1: ECR rank meaningfully worse than FC rank (≥10 spots)
+      const rankGap     = (ecrRank && fcRank) ? ecrRank - fcRank : 0;
+      const hasValueGap = rankGap >= 10;
 
-    // Signal 1: FC rank significantly better than ECR (market undervalues them)
-    const rankGap      = ecrRank - fcRank; // positive = ECR is worse than FC (buy signal)
-    const hasValueGap  = rankGap >= 20;
+      // Signal 2: Prime age window (not yet near cliff)
+      const inPrime = age && cliff && age >= floor && age <= (cliff - 3);
 
-    // Signal 2: Age in prime window (floor to cliff-3)
-    const inPrime = age && cliff && age >= floor && age <= (cliff - 3);
+      // Signal 3: News catalyst
+      const newsItem = newsMap[key];
+      const hasNews  = !!(newsItem && /return|new role|start|promoted|activated|healthy|back|debut|opportunity|target|upside/i.test((newsItem.headline || '') + ' ' + (newsItem.body || '')));
 
-    // Signal 3: News catalyst
-    const newsItem = newsMap[key];
-    const hasNews  = !!(newsItem && /return|new role|starting|named starter|promoted|activated|healthy|back|debut|opportunity|target|upside/i.test(newsItem.headline + ' ' + newsItem.body));
+      // Signal 4: Trending add spike (top 20% of max)
+      const addCount   = trendMap[key] || 0;
+      const isTrending = addCount >= Math.round(maxAdds * 0.20);
 
-    // Signal 4: Trending add spike (top 20% of max adds)
-    const maxAdds   = Math.max(...Object.values(trendMap), 1);
-    const addCount  = trendMap[key] || 0;
-    const isTrending = addCount >= Math.round(maxAdds * 0.20);
+      const signals = [hasValueGap, inPrime, hasNews, isTrending].filter(Boolean).length;
+      if (signals === 0) return; // need at least one signal
 
-    const signals = [hasValueGap, inPrime, hasNews, isTrending].filter(Boolean).length;
-    if (signals === 0 || !hasValueGap) return; // value gap is required; other signals add confidence
+      // Why undervalued
+      let reason = '';
+      if (hasNews && newsItem) reason = (newsItem.headline || '').slice(0, 80);
+      else if (inPrime && age) reason = `Age ${age} — ${cliff - age} years before the ${pos} cliff, priced below dynasty worth`;
+      else if (isTrending) reason = `Trending adds spiking — managers waking up before dynasty values move`;
+      else if (hasValueGap) reason = `Dynasty rank #${fcRank} vs ECR rank #${ecrRank} — consensus sleeping on them`;
 
-    // Why undervalued — pick the most prominent reason
-    let reason = '';
-    if (hasNews && newsItem) reason = newsItem.headline.slice(0, 80);
-    else if (inPrime) reason = `Age ${age} — prime years ahead, but ranked outside top ${ecrRank} by experts`;
-    else if (isTrending) reason = `Trending adds spiking — managers waking up before dynasty values move`;
-    else reason = `Dynasty rank #${fcRank} vs ECR rank #${ecrRank} — market mispricing`;
+      // Buy window
+      let buyWindow = '';
+      if (hasNews) buyWindow = `Act now — news catalysts are short windows. Other managers will price this in within days.`;
+      else if (isTrending) buyWindow = `Buy before the add spike raises their asking price. Trending interest closes the gap fast.`;
+      else if (inPrime && cliff && age) buyWindow = `${cliff - age} year${cliff - age !== 1 ? 's' : ''} before the ${pos} cliff — peak trade value window is ahead.`;
+      else buyWindow = `Window open now. ECR consensus typically lags FC dynasty value by 2–4 weeks.`;
 
-    // Buy window
-    let buyWindow = '';
-    if (hasNews) buyWindow = `Act now — news catalysts are short windows. Other managers will price this in within days.`;
-    else if (isTrending) buyWindow = `Buy before the add spike drives up their asking price. Trending interest closes the gap fast.`;
-    else if (inPrime) buyWindow = `${cliff - age} year${cliff - age !== 1 ? 's' : ''} before the ${ecr.pos} cliff — sell-high value hasn't peaked yet.`;
-    else buyWindow = `Window is open now. Typical ECR lag means you have 2–4 weeks before consensus catches up to dynasty value.`;
+      const isRebuilder = (() => {
+        const vals = (ownerTeam.players || []).map(p => (FC_VALUES[p.id] || {}).rank || 999).sort((a,b) => a-b);
+        return vals[0] > 80;
+      })();
 
-    // Seller profile
-    const isRebuilder = owner && !owner.isMyTeam && (() => {
-      if (!FC_VALUES) return false;
-      const rosterVals = (owner.players || []).map(p => (FC_VALUES[p.id] || {}).rank || 999);
-      const top5 = rosterVals.sort((a,b) => a-b).slice(0,5);
-      return top5[0] > 80; // no top-80 dynasty asset = likely rebuilding
-    })();
-
-    candidates.push({
-      id: rosterEntry.id, name: ecr.name, pos: ecr.pos, team: ecr.team,
-      age, ecrRank, fcRank, rankGap, signals, reason, buyWindow,
-      ownerTeam: owner, isRebuilder,
-      newsHeadline: hasNews ? newsItem?.headline : null,
+      candidates.push({
+        id: rosterEntry.id, name: rosterEntry.name, pos, team: ecr.team || rosterEntry.team || '',
+        age, ecrRank, fcRank, rankGap, signals, reason, buyWindow,
+        ownerTeam, isRebuilder,
+      });
     });
   });
 
   if (!candidates.length) return '';
 
-  // Sort: signals desc, then rankGap desc
-  candidates.sort((a,b) => b.signals - a.signals || b.rankGap - a.rankGap);
+  // Sort: signals desc, then best FC rank
+  candidates.sort((a,b) => b.signals - a.signals || a.fcRank - b.fcRank);
   const shown = candidates.slice(0, 8);
 
   const stars = n => n >= 3 ? '⭐⭐⭐' : n === 2 ? '⭐⭐' : '⭐';
