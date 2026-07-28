@@ -4660,7 +4660,7 @@ function buildCoachCard(activeView) {
       <input id="coach-msg-input" placeholder="Who should I start? Lineup questions, matchup reads, depth chart calls…"
         style="width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:13px;box-sizing:border-box"
         data-act="coach-msg-input">
-      ${_renderEmbeddedChat(U.coachChatHistory, U.coachChatThinking, 'rgba(251,146,60,.07)', 'rgba(251,146,60,.18)')}
+      ${_renderEmbeddedChat(U.coachChatHistory, U.coachChatThinking, 'rgba(251,146,60,.07)', 'rgba(251,146,60,.18)', '220px')}
     </div>
   </div>`;
 }
@@ -5041,6 +5041,53 @@ function renderCoachesOffice() {
     </div>
   </div>`;
 
+  // Bench, IR, taxi rows for matchup view (my team only)
+  const myPtsMapMatchup = matchup?.myPlayers || {};
+  const myIR   = (my.players||[]).filter(p => p.slot === 'ir');
+  const myTaxi = (my.players||[]).filter(p => p.slot === 'taxi');
+
+  function rosterRow(player, slotTag, tagColor) {
+    const pc      = posColor[player.pos] || '#64748b';
+    const proj    = projLabel(player.id);
+    const suffix  = projSuffix(player.id);
+    const live    = livePoints(player.id, myPtsMapMatchup);
+    const disp    = live != null ? live : proj;
+    const isLive  = live != null;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border)">
+      <div style="width:32px;height:32px;border-radius:7px;background:${pc}18;border:1.5px solid ${pc}55;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:${pc};flex-shrink:0">${player.pos}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(player.name)}</div>
+        <div style="font-size:10px;color:var(--muted)">${player.pos}${player.age ? ' · Age ' + player.age : ''}</div>
+      </div>
+      ${slotTag ? `<div style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:${tagColor}22;border:1px solid ${tagColor}55;color:${tagColor};flex-shrink:0">${slotTag}</div>` : ''}
+      <div style="text-align:right;flex-shrink:0;min-width:40px">
+        <div style="font-size:15px;font-weight:800;color:${disp !== '—' ? (isLive ? '#86efac' : 'var(--text)') : 'var(--muted)'}">${disp}</div>
+        <div style="font-size:9px;color:var(--muted)">${isLive ? 'pts' : suffix}</div>
+      </div>
+    </div>`;
+  }
+
+  const myBenchSection = myBench.length ? `<div class="card" style="padding:0;overflow:hidden;margin-bottom:14px">
+    <div style="padding:10px 16px;background:var(--bg2);border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">My Bench (${myBench.length})</div>
+    </div>
+    ${myBench.map(p => rosterRow(p, null, '#64748b')).join('')}
+  </div>` : '';
+
+  const myIRSection = myIR.length ? `<div class="card" style="padding:0;overflow:hidden;margin-bottom:14px">
+    <div style="padding:10px 16px;background:var(--bg2);border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#ef4444">🏥 IR (${myIR.length})</div>
+    </div>
+    ${myIR.map(p => rosterRow(p, 'IR', '#ef4444')).join('')}
+  </div>` : '';
+
+  const myTaxiSection = myTaxi.length ? `<div class="card" style="padding:0;overflow:hidden;margin-bottom:14px">
+    <div style="padding:10px 16px;background:var(--bg2);border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#a78bfa">🚕 Taxi (${myTaxi.length})</div>
+    </div>
+    ${myTaxi.map(p => rosterRow(p, 'TAXI', '#a78bfa')).join('')}
+  </div>` : '';
+
   // Auto-fire start/sit analysis once per matchup week load
   if (coachView === 'matchup' && matchup && hasProj) {
     const fireKey = `startSitFired_w${week}`;
@@ -5081,6 +5128,9 @@ function renderCoachesOffice() {
       </div>
       ${matchupRows}
     </div>
+    ${myBenchSection}
+    ${myIRSection}
+    ${myTaxiSection}
   </div>`;
 }
 
@@ -7313,6 +7363,10 @@ function render() {
   if (U.modal === 'addplayer') {
     setTimeout(() => { const el=document.getElementById('ap-name'); if(el) el.focus(); }, 20);
   }
+
+  // Auto-scroll capped chat containers to bottom
+  const chatScroll = document.getElementById('coach-chat-scroll');
+  if (chatScroll) chatScroll.scrollTop = chatScroll.scrollHeight;
 }
 
 // ══════════════════════════════════════════════════
@@ -9984,7 +10038,7 @@ function _aiStatusBadge() {
     : `<span style="font-size:9px;color:var(--muted);opacity:.5">scripted</span>`;
 }
 
-function _renderEmbeddedChat(history, thinking, bgColor, borderColor) {
+function _renderEmbeddedChat(history, thinking, bgColor, borderColor, maxHeight) {
   if (!history?.length && !thinking) return '';
   const msgs = (history || []).map(m => {
     const isUser = m.side === 'user';
@@ -10002,7 +10056,11 @@ function _renderEmbeddedChat(history, thinking, bgColor, borderColor) {
       <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
     </div>
   </div>` : '';
-  return msgs + typingDots;
+  const inner = msgs + typingDots;
+  if (maxHeight) {
+    return `<div style="max-height:${maxHeight};overflow-y:auto;padding-right:2px" id="coach-chat-scroll">${inner}</div>`;
+  }
+  return inner;
 }
 
 async function sendAgentMessage(role, inputId, historyKey, thinkingKey, directMsg, systemPromptOverride) {
