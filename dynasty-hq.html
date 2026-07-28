@@ -3796,7 +3796,7 @@ function renderGMScanner() {
 
   let content = '';
   if (activeTab === 'scanner') {
-    content = `${renderPickAcquisitionTracker(my)}${renderTeamNeedMatrix(my)}${renderMarketScanner(my)}`;
+    content = renderMarketScanner(my);
   } else if (activeTab === 'agecurve') {
     content = renderAgeCurveFlags(my);
   } else if (activeTab === 'buylow') {
@@ -6672,10 +6672,7 @@ function renderPickAcquisitionTracker(my) {
     </div>` : ''}
   ` : ''}
 
-  <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px;margin-bottom:8px">
-    <div style="font-size:13px;font-weight:700;margin-bottom:2px">Team Need Matrix</div>
-    <div style="font-size:11px;color:var(--muted)">Two-sided trade fits by positional value depth</div>
-  </div>`;
+  `;
 }
 
 function renderTeamNeedMatrix(my) {
