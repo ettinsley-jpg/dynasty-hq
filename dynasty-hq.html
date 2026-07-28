@@ -3197,6 +3197,166 @@ function renderWaiverTrendBoard() {
   </div>` : ''}`;
 }
 
+function renderDraftBoard() {
+  const board    = U.draftBoard || null;   // { ts, classes: { '2026': [...], '2027': [...] } }
+  const loading  = U.draftBoardLoading || false;
+  const err      = U.draftBoardError   || null;
+  const showYear = U.draftBoardYear    || String(new Date().getFullYear() + 1);
+  const isOpen   = U.draftBoardOpen    !== false;
+
+  const TIER_STYLE = {
+    'Elite':    { color:'#fde68a', bg:'rgba(234,179,8,.15)',   border:'rgba(234,179,8,.3)'   },
+    'Top 10':   { color:'#86efac', bg:'rgba(34,197,94,.12)',   border:'rgba(34,197,94,.3)'   },
+    'Day 2':    { color:'#93c5fd', bg:'rgba(59,130,246,.1)',   border:'rgba(59,130,246,.25)' },
+    'Day 3':    { color:'#d4d4d4', bg:'rgba(156,163,175,.08)', border:'rgba(156,163,175,.2)' },
+    'Sleeper':  { color:'#c4b5fd', bg:'rgba(167,139,250,.1)',  border:'rgba(167,139,250,.25)'},
+  };
+
+  const POS_COLOR = { QB:'#f472b6', RB:'#4ade80', WR:'#60a5fa', TE:'#fb923c' };
+
+  function prospectCard(p) {
+    const ts = TIER_STYLE[p.tier] || TIER_STYLE['Day 3'];
+    const noteKey = 'draft_' + p.name.replace(/\s+/g,'_').toLowerCase();
+    const noteBtn = filmNoteBtnSmall(noteKey, p.name);
+    const note = getFilmNote(noteKey);
+    const gradeBar = p.grade ? `<div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+      <div style="font-size:10px;color:var(--muted);white-space:nowrap">ESPN Grade</div>
+      <div style="flex:1;height:4px;background:var(--bg2);border-radius:2px;overflow:hidden">
+        <div style="height:100%;width:${Math.min(100,(p.grade-60)/40*100)}%;background:${p.grade>=90?'#4ade80':p.grade>=85?'#facc15':'#60a5fa'};border-radius:2px"></div>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:${p.grade>=90?'#4ade80':p.grade>=85?'#facc15':'#60a5fa'}">${p.grade}</div>
+    </div>` : '';
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:flex-start;gap:10px">
+      <div style="flex-shrink:0;width:28px;height:28px;border-radius:6px;background:${POS_COLOR[p.pos]||'var(--bg2)'}20;border:1px solid ${POS_COLOR[p.pos]||'var(--border)'}40;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:${POS_COLOR[p.pos]||'var(--muted)'}">${esc(p.pos)}</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span style="font-weight:700;font-size:13px">${esc(p.name)}</span>
+          <span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:${ts.bg};color:${ts.color};border:1px solid ${ts.border}">${esc(p.tier)}</span>
+          ${filmNoteChip(noteKey)}
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">
+          ${esc(p.school||'')}${p.overallRank ? ` · #${p.overallRank} overall` : ''}${p.posRank ? ` · #${p.posRank} ${p.pos}` : ''}
+        </div>
+        ${gradeBar}
+        ${note ? `<div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4;padding:4px 6px;background:rgba(255,255,255,.04);border-radius:4px;border-left:2px solid ${ts.color}">${esc(note.text)}</div>` : ''}
+      </div>
+      <div style="flex-shrink:0">${noteBtn}</div>
+    </div>`;
+  }
+
+  const genBtn = `<button class="btn btn-gold" data-act="gen-draft-board" style="white-space:nowrap">
+    ${loading ? '⏳ Generating…' : board ? '🔄 Regenerate' : '🎯 Generate Draft Board'}
+  </button>`;
+
+  const header = `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+    <div>
+      <div style="font-size:13px;font-weight:700">🏈 AI Positional Draft Board</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:1px">2026 + 2027 dynasty prospects — Claude's consensus rankings</div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center">
+      ${board ? `<button class="btn btn-outline btn-sm" data-act="toggle-draft-board">${isOpen ? '▲ Collapse' : '▼ Expand'}</button>` : ''}
+      ${genBtn}
+    </div>
+  </div>`;
+
+  if (!board && !loading && !err) {
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-top:16px">
+      ${header}
+      <div style="text-align:center;padding:20px 0;color:var(--muted);font-size:13px">
+        Hit Generate to build a 2026 + 2027 dynasty draft board using AI consensus rankings.
+      </div>
+    </div>`;
+  }
+
+  if (loading) {
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-top:16px">
+      ${header}
+      <div style="text-align:center;padding:24px 0;color:var(--muted);font-size:13px">
+        ⏳ Building your draft board — this takes about 15 seconds…
+      </div>
+    </div>`;
+  }
+
+  if (err) {
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-top:16px">
+      ${header}
+      <div style="color:#fca5a5;font-size:13px;padding:8px 0">${esc(err)}</div>
+    </div>`;
+  }
+
+  if (!isOpen) return `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-top:16px">${header}</div>`;
+
+  const classes = board.classes || {};
+  const curYear = new Date().getFullYear();
+  const years = [String(curYear+1), String(curYear+2)];
+  const yearTabs = years.map(y => `<button data-act="draft-board-year" data-val="${y}"
+    style="padding:5px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;
+      border:1px solid ${showYear===y?'rgba(245,158,11,.5)':'var(--border)'};
+      background:${showYear===y?'rgba(245,158,11,.12)':'var(--card)'};
+      color:${showYear===y?'#f59e0b':'var(--muted)'}">${y} Class</button>`).join('');
+
+  const posOrder = ['QB','RB','WR','TE'];
+  // Support both old flat array format and new byPos object format
+  const rawClass = classes[showYear] || {};
+  const byPos = Array.isArray(rawClass)
+    ? rawClass.reduce((acc, p) => { (acc[p.pos]=(acc[p.pos]||[])).push(p); return acc; }, {})
+    : rawClass;
+
+  const posCards = posOrder.map(pos => {
+    const players = byPos[pos];
+    if (!players || !players.length) return '';
+    return `<div style="margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;color:${POS_COLOR[pos]||'var(--muted)'};text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;display:flex;align-items:center;gap:6px">
+        <span style="padding:2px 8px;border-radius:4px;background:${POS_COLOR[pos]||'var(--muted)'}18">${pos}</span>
+        <span style="color:var(--muted);font-weight:400">${players.length} prospects</span>
+      </div>
+      ${players.map(prospectCard).join('')}
+    </div>`;
+  }).join('');
+
+  const ts = board.ts ? new Date(board.ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+
+  return `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-top:16px">
+    ${header}
+    <div style="display:flex;gap:6px;margin-bottom:14px">${yearTabs}</div>
+    ${posCards || '<div style="color:var(--muted);font-size:13px;padding:12px 0">No prospects loaded for this class.</div>'}
+    ${ts ? `<div style="font-size:10px;color:var(--muted);margin-top:4px;text-align:right">Generated ${ts} · AI-powered estimates, not live rankings</div>` : ''}
+  </div>`;
+}
+
+async function generateDraftBoard() {
+  U.draftBoardLoading = true;
+  U.draftBoardError   = null;
+  render();
+
+  const curYear = new Date().getFullYear();
+  const y1 = curYear + 1, y2 = curYear + 2;
+
+  async function fetchClass(year) {
+    const res = await fetch(`/.netlify/functions/prospects?year=${year}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status} for ${year} class`);
+    return res.json();
+  }
+
+  try {
+    const [data1, data2] = await Promise.all([fetchClass(y1), fetchClass(y2)]);
+    U.draftBoard = {
+      ts: Date.now(),
+      classes: {
+        [String(y1)]: data1.byPos,
+        [String(y2)]: data2.byPos,
+      },
+    };
+    U.draftBoardLoading = false;
+    U.draftBoardYear = String(y1);
+    U.draftBoardOpen = true;
+  } catch(e) {
+    U.draftBoardLoading = false;
+    U.draftBoardError = 'Failed to fetch prospects: ' + (e.message || e);
+  }
+  render();
+}
+
 function renderScouting() {
   const hired   = curStaff().hired || {};
   const scout   = hired.scout;
@@ -3265,16 +3425,33 @@ function renderScouting() {
     ? section('📋', 'Waiver Wire — Rising Players Available in Your League', briefing.waiverTargets.map(p => playerRow({...p, trendColor: p.trendColor}, false)), '')
     : '';
 
+  const scoutMode = U.scoutMode || 'waivers'; // 'waivers' | 'draftroom'
+
+  const modeBtns = ['waivers','draftroom'].map(m => {
+    const active = scoutMode === m;
+    const label  = m === 'waivers' ? '📋 Waivers' : '🎯 Draft War Room';
+    return `<button data-act="scout-mode" data-val="${m}"
+      style="flex:1;padding:8px 0;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;
+        border:1px solid ${active ? 'rgba(245,158,11,.5)' : 'var(--border)'};
+        background:${active ? 'rgba(245,158,11,.12)' : 'var(--card)'};
+        color:${active ? '#f59e0b' : 'var(--muted)'}">${label}</button>`;
+  }).join('');
+
   return `<div class="page">
     <div class="page-hd">
       <div>
         <div class="page-title">🔭 Talent Bureau</div>
-        <div class="page-sub">Waiver wire intel · Player trends · Sleeper targets</div>
+        <div class="page-sub">Waiver wire intel · Player trends · Draft prospects</div>
       </div>
       ${!FC_VALUES ? `<button class="btn btn-gold" data-act="load-fc" style="white-space:nowrap">Load Dynasty Values</button>` : `<div style="font-size:12px;color:#86efac;display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;background:#22c55e;border-radius:50%;display:inline-block"></span>FC Values Loaded</div>`}
     </div>
 
-    <!-- Scout briefing card -->
+    ${renderPhaseBanner()}
+
+    <!-- Mode selector -->
+    <div style="display:flex;gap:8px;margin-bottom:16px">${modeBtns}</div>
+
+    <!-- Scout briefing card (always visible) -->
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px">
       <!-- Scout header -->
       <div style="display:flex;gap:12px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border);background:rgba(0,0,0,.15)">
@@ -3340,14 +3517,17 @@ function renderScouting() {
       </div>
     </div>
 
-    ${renderPhaseBanner()}
-    ${renderWaiverTrendBoard()}
-    ${noData}
-    ${waiverSection}
-    ${mustAcquireSection}
-    ${undervaluedSection}
-    ${overvaluedSection}
-    ${sleepersSection}
+    ${scoutMode === 'draftroom' ? `
+      ${renderDraftBoard()}
+    ` : `
+      ${renderWaiverTrendBoard()}
+      ${noData}
+      ${waiverSection}
+      ${mustAcquireSection}
+      ${undervaluedSection}
+      ${overvaluedSection}
+      ${sleepersSection}
+    `}
   </div>`;
 }
 
@@ -3388,6 +3568,161 @@ function newsChip(playerName, playerId) {
     : '';
 
   return chip + expanded;
+}
+
+function renderDynastyValueCalendar(my) {
+  const now      = new Date();
+  const curMonth = now.getMonth(); // 0=Jan
+  const curYear  = now.getFullYear();
+
+  // Seasonal strategy windows
+  const MONTHS = [
+    { m:0,  name:'Jan', short:'J', buy:'Veterans who underperformed — post-season panic selling creates value. Rebuilders unloading for picks.',
+      sell:'Aging players whose window is clearly closing.', focus:['RB','WR'], mode:'buy',
+      tip:'🟢 Buy season — post-playoff overreactions open buying windows.' },
+    { m:1,  name:'Feb', short:'F', buy:'Players whose situations will improve with offseason moves. Patience pays here.',
+      sell:'Players with expiring dynasty upside or high age.',  focus:['QB','TE'], mode:'buy',
+      tip:'🟢 Buy season — quiet period. Find value before FA news moves prices.' },
+    { m:2,  name:'Mar', short:'M', buy:'WRs who just landed in a better passing offense. Monitor quickly before prices move.',
+      sell:'Skill players who lost their target share or starting role in FA.', focus:['WR','RB'], mode:'watch',
+      tip:'🟡 Watch — free agency reshuffles depth charts. Verify landing spots before buying or selling.' },
+    { m:3,  name:'Apr', short:'A', buy:'Veterans whose value dipped due to incoming rookie competition.',
+      sell:'Veterans being replaced by incoming draft picks at their position.', focus:['RB','WR'], mode:'sell',
+      tip:'🔴 Sell window — NFL Draft creates rookie hype. Sell overlapping veterans before ADP spikes.' },
+    { m:4,  name:'May', short:'M', buy:'Rookies who slipped in ADP. Veterans whose value survived the draft.',
+      sell:'Rookies who were overdrafted relative to landing spot.', focus:['QB','WR','RB'], mode:'buy',
+      tip:'🟢 Post-draft buy — real landing spots are known. Buy undervalued rookies now.' },
+    { m:5,  name:'Jun', short:'J', buy:'Any player with a clear path to a feature role entering camp.',
+      sell:'Nothing — prices are stable. Save capital for camp battles.', focus:['RB'], mode:'hold',
+      tip:'🔵 Hold — OTAs begin. Low volume news, stable prices. Don\'t overpay on hype.' },
+    { m:6,  name:'Jul', short:'J', buy:'Players with quiet, strong OTA reports before the media runs the story.',
+      sell:'Veterans generating major camp hype — sell into the narrative.', focus:['WR','TE'], mode:'sell',
+      tip:'🔴 Sell into hype — training camp narratives peak. Move veterans at maximum perceived value.' },
+    { m:7,  name:'Aug', short:'A', buy:'Players injured in camp who will bounce back — buy the dip.',
+      sell:'Any veteran near their cliff — preseason is the last chance at peak price.', focus:['RB','WR'], mode:'sell',
+      tip:'🔴 Sell window — final chance before real games reveal truth. Move rentals now.' },
+    { m:8,  name:'Sep', short:'S', buy:'Wait — small sample sizes. Let week 1-3 dust settle.',
+      sell:'Nothing this week. React to injuries, not variance.', focus:['ALL'], mode:'hold',
+      tip:'🔵 Hold — season starts. Wait for confirmed roles before moving. Variance is high in weeks 1-3.' },
+    { m:9,  name:'Oct', short:'O', buy:'Underperformers with dynasty value — mid-season panic creates buying windows.',
+      sell:'Hot players riding unsustainable target share or TD luck.', focus:['WR','TE'], mode:'buy',
+      tip:'🟢 Buy underperformers — midseason panic selling is your opportunity.' },
+    { m:10, name:'Nov', short:'N', buy:'Nothing — capital preservation before trade deadline.',
+      sell:'Rentals and aging players. Win-now teams overpay in November.', focus:['RB','WR'], mode:'sell',
+      tip:'🔴 Sell rentals — trade deadline pressure. Win-now managers overpay. Move anyone near their cliff.' },
+    { m:11, name:'Dec', short:'D', buy:'Next-year assets. Rebuilding teams sell at season-end discounts.',
+      sell:'Anyone you need to move before the offseason reset.',  focus:['QB','WR'], mode:'buy',
+      tip:'🟢 Buy future assets — rebuilders selling cheap at season\'s end. Load up for next year.' },
+  ];
+
+  const MODE_STYLE = {
+    buy:  { color:'#86efac', bg:'rgba(34,197,94,.15)',  border:'rgba(34,197,94,.3)',  label:'BUY'  },
+    sell: { color:'#fca5a5', bg:'rgba(239,68,68,.15)',  border:'rgba(239,68,68,.3)',  label:'SELL' },
+    hold: { color:'#93c5fd', bg:'rgba(59,130,246,.12)', border:'rgba(59,130,246,.25)',label:'HOLD' },
+    watch:{ color:'#fde68a', bg:'rgba(234,179,8,.12)',  border:'rgba(234,179,8,.25)', label:'WATCH'},
+  };
+
+  const cur = MONTHS[curMonth];
+  const modeStyle = MODE_STYLE[cur.mode];
+
+  // My roster players with action items this month
+  const myPlayers = my ? (my.players||[]).filter(p => ['QB','RB','WR','TE'].includes(p.pos) && (p.slot==='active'||!p.slot)) : [];
+  const PRIME = { QB:[26,32,35], RB:[22,26,29], WR:[24,28,31], TE:[25,29,32] };
+  const actionPlayers = myPlayers.filter(p => {
+    const fc = (FC_VALUES && FC_VALUES[p.id]) || {};
+    if (!fc.value) return false;
+    const [,pe,cliff] = PRIME[p.pos] || [24,28,33];
+    const age = p.age || 0;
+    if (cur.mode === 'sell' && age >= pe - 1) return true;
+    if (cur.mode === 'buy') return false; // buy = look externally
+    if (cur.mode === 'sell' && (fc.trend||0) < -200) return true;
+    return false;
+  }).slice(0, 5);
+
+  // Month strip
+  const monthStrip = MONTHS.map((mo, i) => {
+    const isCur = i === curMonth;
+    const ms    = MODE_STYLE[mo.mode];
+    return `<div style="flex:1;min-width:0;text-align:center;padding:6px 2px;border-radius:6px;
+      background:${isCur ? ms.bg : 'transparent'};border:1px solid ${isCur ? ms.border : 'transparent'};
+      cursor:pointer" data-act="cal-month" data-val="${i}">
+      <div style="font-size:9px;font-weight:${isCur?700:500};color:${isCur?ms.color:'var(--muted)'}">${mo.short}</div>
+      <div style="width:6px;height:6px;border-radius:50%;background:${ms.color};margin:3px auto 0;opacity:${isCur?1:.5}"></div>
+    </div>`;
+  }).join('');
+
+  const selMonth = MONTHS[U.calMonth ?? curMonth];
+  const selStyle = MODE_STYLE[selMonth.mode];
+
+  // 2025 NFL bye weeks (hardcoded)
+  const BYE_WEEKS = {
+    'ARI':5,'ATL':12,'BAL':14,'BUF':12,'CAR':11,'CHI':7,'CIN':12,'CLE':10,
+    'DAL':7,'DEN':9,'DET':5,'GB':12,'HOU':14,'IND':14,'JAX':12,'KC':6,
+    'LAC':5,'LAR':6,'LV':10,'MIA':10,'MIN':6,'NE':14,'NO':12,'NYG':11,
+    'NYJ':12,'PHI':5,'PIT':9,'SEA':10,'SF':9,'TB':11,'TEN':12,'WAS':14
+  };
+
+  const myByes = myPlayers.reduce((acc, p) => {
+    const bw = BYE_WEEKS[p.team];
+    if (!bw) return acc;
+    if (!acc[bw]) acc[bw] = [];
+    acc[bw].push(p);
+    return acc;
+  }, {});
+
+  const byeRows = Object.entries(myByes).sort((a,b) => +a[0]-+b[0]).map(([week, players]) =>
+    `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);min-width:52px">Week ${week}</div>
+      <div style="font-size:12px;flex:1;flex-wrap:wrap;display:flex;gap:4px">
+        ${players.map(p => `<span style="padding:2px 7px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:11px">${esc(p.name)} <span style="color:var(--muted)">${p.pos}</span></span>`).join('')}
+      </div>
+    </div>`
+  ).join('');
+
+  return `
+    <div style="margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:2px">📅 Dynasty Value Calendar</div>
+      <div style="font-size:11px;color:var(--muted)">Seasonal buy/sell windows + your roster's bye weeks</div>
+    </div>
+
+    <!-- Month strip -->
+    <div style="display:flex;gap:2px;margin-bottom:16px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px">
+      ${monthStrip}
+    </div>
+
+    <!-- Selected month detail -->
+    <div style="background:var(--card);border:1px solid ${selStyle.border};border-radius:10px;padding:16px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:16px;font-weight:800">${selMonth.name} ${curYear}</div>
+        <div style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;background:${selStyle.bg};color:${selStyle.color};border:1px solid ${selStyle.border}">${selStyle.label}</div>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:${selStyle.color};margin-bottom:8px">${selMonth.tip}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:8px;padding:10px">
+          <div style="font-size:10px;font-weight:700;color:#86efac;margin-bottom:5px">🟢 WHO TO BUY</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.5">${selMonth.buy}</div>
+        </div>
+        <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:8px;padding:10px">
+          <div style="font-size:10px;font-weight:700;color:#fca5a5;margin-bottom:5px">🔴 WHO TO SELL</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.5">${selMonth.sell}</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted)">Position focus: <strong style="color:var(--text)">${selMonth.focus.join(', ')}</strong></div>
+      ${actionPlayers.length && (U.calMonth ?? curMonth) === curMonth ? `
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+          <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:6px">YOUR ROSTER — ACTION ITEMS THIS MONTH</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px">
+            ${actionPlayers.map(p => `<span style="padding:3px 8px;background:${selStyle.bg};border:1px solid ${selStyle.border};border-radius:5px;font-size:11px;color:${selStyle.color}">${esc(p.name)} (${p.pos}, Age ${p.age})</span>`).join('')}
+          </div>
+        </div>` : ''}
+    </div>
+
+    <!-- Bye weeks -->
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+      <div style="font-size:12px;font-weight:700;margin-bottom:8px">📆 My Roster Bye Weeks — 2025 Season</div>
+      ${byeRows || '<div style="font-size:12px;color:var(--muted)">Import your league to see bye week schedule.</div>'}
+    </div>
+  `;
 }
 
 function renderAgeCurveFlags(my) {
@@ -4190,6 +4525,7 @@ function renderGMScanner() {
     { id:'picktrack', label:'📡 Pick Acquisition',          sub:'Win-now & rebuild targets' },
     { id:'timeline',  label:'📊 Trade Value Timeline',      sub:'Buy / Hold / Sell signals' },
     { id:'rental',    label:'🔄 Rental vs. Asset Alerts',   sub:'League-wide age cliff profiles' },
+    { id:'calendar',  label:'📅 Dynasty Value Calendar',   sub:'Seasonal buy/sell windows' },
   ];
 
   const subNav = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:20px">
@@ -4228,6 +4564,8 @@ function renderGMScanner() {
     content = renderTradeValueTimeline(my);
   } else if (activeTab === 'rental') {
     content = renderRentalAssetAlerts(my);
+  } else if (activeTab === 'calendar') {
+    content = renderDynastyValueCalendar(my);
   }
 
   return `<div class="page">
@@ -8415,6 +8753,9 @@ document.addEventListener('click', e => {
       if (btn.dataset.val === 'picktrack') U.needMatrixTargets = true;
       render(); break;
 
+    case 'cal-month':
+      U.calMonth = parseInt(btn.dataset.val); render(); break;
+
     case 'tvl-search': break; // handled via input event
 
     case 'open-film-note':
@@ -8468,6 +8809,18 @@ document.addEventListener('click', e => {
       U.tradeTab  = 'tradefind';
       render(); break;
     }
+
+    case 'toggle-draft-board':
+      U.draftBoardOpen = !(U.draftBoardOpen !== false); render(); break;
+
+    case 'scout-mode':
+      U.scoutMode = btn.dataset.val; render(); break;
+
+    case 'draft-board-year':
+      U.draftBoardYear = btn.dataset.val; render(); break;
+
+    case 'gen-draft-board':
+      generateDraftBoard(); break;
 
     case 'toggle-pick-tracker':
       U.pickTrackerOpen = !(U.pickTrackerOpen !== false); render(); break;
@@ -10614,20 +10967,20 @@ const STAFF_ONBOARDING = {
 
 // ── Claude API integration ─────────────────────────────────────────────────────
 
-async function callClaudeAPI(systemPrompt, messages) {
+async function callClaudeAPI(systemPrompt, messages, maxTokens = 1024) {
   const key = CLAUDE_API_KEY;
   if (!key) throw new Error('NO_KEY');
 
   const payload = {
     model:      'claude-haiku-4-5-20251001',
-    max_tokens: 1024,
+    max_tokens: maxTokens,
     system:     systemPrompt,
     messages,
     apiKey:     key,
   };
 
   // Try local proxy first, then Netlify function
-  const endpoints = ['http://localhost:3001/claude', '/api/claude'];
+  const endpoints = ['http://localhost:3001/claude', '/.netlify/functions/claude'];
   let lastErr;
   for (const url of endpoints) {
     try {
