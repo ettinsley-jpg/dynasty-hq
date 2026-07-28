@@ -3433,6 +3433,168 @@ function renderAgeCurveFlags(my) {
   </div>`;
 }
 
+function renderBuyLowRadar(my) {
+  if (!my || !FC_VALUES || !INTEL.ecr || !Object.keys(INTEL.ecr).length) return '';
+
+  const POS_CLIFFS  = { RB: 28, WR: 30, TE: 31, QB: 35 };
+  const PRIME_FLOOR = { RB: 22, WR: 22, TE: 23, QB: 24 };
+  const SKILL_POS   = new Set(['RB','WR','TE','QB']);
+
+  const myIds    = new Set((my.players || []).map(p => p.id));
+  const myNames  = new Set((my.players || []).map(p => normalizeName(p.name)));
+  const trendMap = {};
+  (INTEL.trending || []).forEach(t => { trendMap[normalizeName(t.name)] = t.addCount || 0; });
+  const newsMap  = {};
+  (INTEL.news || []).forEach(n => { newsMap[n.playerKey] = n; });
+
+  // Build owner map: normalizedName → team
+  const ownerMap = {};
+  S.teams.forEach(t => {
+    (t.players || []).forEach(p => { ownerMap[normalizeName(p.name)] = t; });
+  });
+
+  const candidates = [];
+
+  Object.values(INTEL.ecr).forEach(ecr => {
+    if (!SKILL_POS.has(ecr.pos)) return;
+    const key = normalizeName(ecr.name);
+    if (myNames.has(key)) return; // already own them
+
+    // Need FC rank to compute value gap
+    const owner   = ownerMap[key];
+    if (!owner) return; // not on any roster in this league — skip
+
+    // Look up FC value by matching player id from owner's roster
+    const rosterEntry = (owner.players || []).find(p => normalizeName(p.name) === key);
+    if (!rosterEntry) return;
+    const fc = FC_VALUES[rosterEntry.id];
+    if (!fc || !fc.rank) return;
+
+    const ecrRank = ecr.rank;
+    const fcRank  = fc.rank;
+    const age     = ecr.age || rosterEntry.age || null;
+    const cliff   = POS_CLIFFS[ecr.pos];
+    const floor   = PRIME_FLOOR[ecr.pos] || 22;
+
+    // Signal 1: FC rank significantly better than ECR (market undervalues them)
+    const rankGap      = ecrRank - fcRank; // positive = ECR is worse than FC (buy signal)
+    const hasValueGap  = rankGap >= 20;
+
+    // Signal 2: Age in prime window (floor to cliff-3)
+    const inPrime = age && cliff && age >= floor && age <= (cliff - 3);
+
+    // Signal 3: News catalyst
+    const newsItem = newsMap[key];
+    const hasNews  = !!(newsItem && /return|new role|starting|named starter|promoted|activated|healthy|back|debut|opportunity|target|upside/i.test(newsItem.headline + ' ' + newsItem.body));
+
+    // Signal 4: Trending add spike (top 20% of max adds)
+    const maxAdds   = Math.max(...Object.values(trendMap), 1);
+    const addCount  = trendMap[key] || 0;
+    const isTrending = addCount >= Math.round(maxAdds * 0.20);
+
+    const signals = [hasValueGap, inPrime, hasNews, isTrending].filter(Boolean).length;
+    if (signals === 0 || !hasValueGap) return; // value gap is required; other signals add confidence
+
+    // Why undervalued — pick the most prominent reason
+    let reason = '';
+    if (hasNews && newsItem) reason = newsItem.headline.slice(0, 80);
+    else if (inPrime) reason = `Age ${age} — prime years ahead, but ranked outside top ${ecrRank} by experts`;
+    else if (isTrending) reason = `Trending adds spiking — managers waking up before dynasty values move`;
+    else reason = `Dynasty rank #${fcRank} vs ECR rank #${ecrRank} — market mispricing`;
+
+    // Buy window
+    let buyWindow = '';
+    if (hasNews) buyWindow = `Act now — news catalysts are short windows. Other managers will price this in within days.`;
+    else if (isTrending) buyWindow = `Buy before the add spike drives up their asking price. Trending interest closes the gap fast.`;
+    else if (inPrime) buyWindow = `${cliff - age} year${cliff - age !== 1 ? 's' : ''} before the ${ecr.pos} cliff — sell-high value hasn't peaked yet.`;
+    else buyWindow = `Window is open now. Typical ECR lag means you have 2–4 weeks before consensus catches up to dynasty value.`;
+
+    // Seller profile
+    const isRebuilder = owner && !owner.isMyTeam && (() => {
+      if (!FC_VALUES) return false;
+      const rosterVals = (owner.players || []).map(p => (FC_VALUES[p.id] || {}).rank || 999);
+      const top5 = rosterVals.sort((a,b) => a-b).slice(0,5);
+      return top5[0] > 80; // no top-80 dynasty asset = likely rebuilding
+    })();
+
+    candidates.push({
+      id: rosterEntry.id, name: ecr.name, pos: ecr.pos, team: ecr.team,
+      age, ecrRank, fcRank, rankGap, signals, reason, buyWindow,
+      ownerTeam: owner, isRebuilder,
+      newsHeadline: hasNews ? newsItem?.headline : null,
+    });
+  });
+
+  if (!candidates.length) return '';
+
+  // Sort: signals desc, then rankGap desc
+  candidates.sort((a,b) => b.signals - a.signals || b.rankGap - a.rankGap);
+  const shown = candidates.slice(0, 8);
+
+  const stars = n => n >= 3 ? '⭐⭐⭐' : n === 2 ? '⭐⭐' : '⭐';
+  const starsLabel = n => n >= 3 ? 'HIGH' : n === 2 ? 'MED' : 'LOW';
+  const starsColor = n => n >= 3 ? '#22c55e' : n === 2 ? '#f59e0b' : '#94a3b8';
+  const starsBg    = n => n >= 3 ? 'rgba(34,197,94,.08)' : n === 2 ? 'rgba(245,158,11,.08)' : 'rgba(148,163,184,.08)';
+  const starsBorder= n => n >= 3 ? 'rgba(34,197,94,.25)' : n === 2 ? 'rgba(245,158,11,.25)' : 'rgba(148,163,184,.2)';
+
+  const isOpen = U.buyLowOpen !== false; // default open
+
+  return `<div style="margin-bottom:20px">
+    <button data-act="toggle-buy-low"
+      style="width:100%;display:flex;align-items:center;justify-content:space-between;background:none;border:none;cursor:pointer;padding:0;margin-bottom:${isOpen ? '8px' : '0'}">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">
+        📈 Buy-Low Radar — ${shown.length} target${shown.length !== 1 ? 's' : ''}
+      </div>
+      <span style="font-size:11px;color:var(--muted)">${isOpen ? '▲' : '▼'}</span>
+    </button>
+    ${isOpen ? `<div style="display:flex;flex-direction:column;gap:10px">
+      ${shown.map(f => `
+      <div style="background:${starsBg(f.signals)};border:1px solid ${starsBorder(f.signals)};border-radius:12px;padding:14px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+          <div>
+            <span style="font-weight:700;font-size:14px;color:var(--text)">${esc(f.name)}</span>
+            <span style="color:var(--muted);font-size:12px;margin-left:8px">${f.pos}${f.age ? ' · Age ' + f.age : ''} · ${esc(f.team || '')}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span style="font-size:11px;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:6px;padding:2px 7px">
+              FC #${f.fcRank} · ECR #${f.ecrRank}
+            </span>
+            <span style="font-size:11px;font-weight:700;color:${starsColor(f.signals)};background:${starsBg(f.signals)};border:1px solid ${starsBorder(f.signals)};border-radius:6px;padding:3px 9px">
+              ${stars(f.signals)} ${starsLabel(f.signals)}
+            </span>
+            <button data-act="age-curve-want" data-pid="${esc(f.id)}" data-name="${esc(f.name)}" data-pos="${esc(f.pos)}" data-value="${(FC_VALUES[f.id]||{}).value||0}" data-age="${f.age||0}"
+              style="font-size:11px;font-weight:700;color:#000;background:var(--gold);border:none;border-radius:6px;padding:3px 9px;cursor:pointer;white-space:nowrap">Find Trade →</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div style="background:var(--card);border-radius:8px;padding:10px 12px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Why Undervalued</div>
+            <div style="font-size:12px;color:var(--text);line-height:1.45">${esc(f.reason)}</div>
+          </div>
+          <div style="background:var(--card);border-radius:8px;padding:10px 12px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Value Gap</div>
+            <div style="font-size:12px;color:var(--text);line-height:1.45">
+              Dynasty <strong style="color:${starsColor(f.signals)}">#${f.fcRank}</strong> vs ECR <strong>#${f.ecrRank}</strong>
+              <span style="color:var(--muted)"> (+${f.rankGap} rank gap)</span>
+            </div>
+          </div>
+          <div style="background:var(--card);border-radius:8px;padding:10px 12px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Buy Window</div>
+            <div style="font-size:12px;color:var(--text);line-height:1.45">${esc(f.buyWindow)}</div>
+          </div>
+          <div style="background:var(--card);border-radius:8px;padding:10px 12px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Owner</div>
+            <div style="font-size:12px;color:var(--text);line-height:1.45">
+              <strong>${esc(f.ownerTeam.name)}</strong>
+              ${f.isRebuilder ? `<span style="display:block;color:#86efac;font-size:11px;margin-top:2px">Likely rebuilding — motivated seller</span>` : `<span style="display:block;color:var(--muted);font-size:11px;margin-top:2px">Check their roster needs to find leverage</span>`}
+            </div>
+          </div>
+        </div>
+      </div>`).join('')}
+    </div>` : ''}
+  </div>`;
+}
+
 function renderGMDashHome() {
   const my      = S.teams.find(t => t.isMyTeam);
   const league  = _curLeague();
@@ -3530,6 +3692,9 @@ function renderGMDashHome() {
 
     <!-- Age Curve Risk Flags -->
     ${renderAgeCurveFlags(my)}
+
+    <!-- Buy-Low Radar -->
+    ${renderBuyLowRadar(my)}
 
     <!-- GM Briefing card -->
     ${renderGMBriefingCard(my, league, scoutedTeams)}
@@ -7303,6 +7468,19 @@ document.addEventListener('click', e => {
 
     case 'tfv2-mode':
       U.tfv2Mode = btn.dataset.val; render(); break;
+
+    case 'toggle-buy-low':
+      U.buyLowOpen = !(U.buyLowOpen !== false); render(); break;
+
+    case 'age-curve-want': {
+      const p = { id:btn.dataset.pid, name:btn.dataset.name, pos:btn.dataset.pos, value:parseInt(btn.dataset.value)||0, age:parseInt(btn.dataset.age)||0 };
+      U.tfv2Mode  = 'want';
+      U.tfv2Want  = [p];
+      U.tfv2Team  = null;
+      U.tab       = 'trades';
+      U.tradeTab  = 'tradefind';
+      render(); break;
+    }
 
     case 'age-curve-trade': {
       const p = { id:btn.dataset.pid, name:btn.dataset.name, pos:btn.dataset.pos, value:parseInt(btn.dataset.value)||0, age:parseInt(btn.dataset.age)||0 };
