@@ -7288,21 +7288,13 @@ document.addEventListener('click', e => {
     case 'tfv2-gm-send': {
       const input = (document.getElementById('tfv2-gm-input')||{}).value || U.tfv2GmInput || '';
       if (!input.trim()) break;
-      const my2 = S.teams.find(t=>t.isMyTeam) || S.teams[0];
-      const resp = gmTradeResponse(input.trim(), my2, S.teams, _curLeague());
-      U.tfv2GmChat = [...(U.tfv2GmChat||[]), {side:'user',msg:esc(input.trim())}, {side:'gm',msg:resp}];
       U.tfv2GmInput = '';
-      render();
-      requestAnimationFrame(()=>{ const el=document.getElementById('tfv2-gm-bottom'); if(el) el.scrollIntoView({behavior:'smooth'}); });
+      sendTfv2GmMessage(input.trim());
       break;
     }
 
     case 'tfv2-gm-quick': {
-      const my2 = S.teams.find(t=>t.isMyTeam) || S.teams[0];
-      const resp = gmTradeResponse(btn.dataset.val, my2, S.teams, _curLeague());
-      U.tfv2GmChat = [...(U.tfv2GmChat||[]), {side:'user',msg:esc(btn.dataset.val)}, {side:'gm',msg:resp}];
-      render();
-      requestAnimationFrame(()=>{ const el=document.getElementById('tfv2-gm-bottom'); if(el) el.scrollIntoView({behavior:'smooth'}); });
+      sendTfv2GmMessage(btn.dataset.val);
       break;
     }
 
@@ -8038,13 +8030,7 @@ document.addEventListener('keydown', e => {
     if (id==='tfv2-gm-input') {
       const el  = document.getElementById('tfv2-gm-input');
       const msg = (el && el.value || '').trim();
-      if (msg) {
-        const my2 = S.teams.find(t=>t.isMyTeam) || S.teams[0];
-        const resp = gmTradeResponse(msg, my2, S.teams, _curLeague());
-        U.tfv2GmChat = [...(U.tfv2GmChat||[]), {side:'user',msg:esc(msg)}, {side:'gm',msg:resp}];
-        U.tfv2GmInput = ''; el.value = ''; render();
-        requestAnimationFrame(()=>{ const bot=document.getElementById('tfv2-gm-bottom'); if(bot) bot.scrollIntoView({behavior:'smooth'}); });
-      }
+      if (msg) { U.tfv2GmInput = ''; if (el) el.value = ''; sendTfv2GmMessage(msg); }
       return;
     }
   }
@@ -9528,6 +9514,85 @@ Personality: You see things others miss. You think 2-3 years ahead. You protect 
   };
 
   return personas[role] || personas.assistant;
+}
+
+function buildTfv2GmSystemPrompt() {
+  const my     = S.teams?.find(t => t.isMyTeam);
+  const league = _curLeague();
+  const hired  = curStaff().hired || {};
+  const gm     = hired.gm || {};
+  const gmName = gm.firstName ? `${gm.firstName} ${gm.lastName || ''}`.trim() : 'Marcus Williams';
+
+  const offer   = U.tfv2Offer || [];
+  const mode    = U.tfv2Mode  || 'offer';
+  const wantTeam = U.tfv2Team ? S.teams.find(t => t.id === U.tfv2Team) : null;
+  const want    = U.tfv2Want  || [];
+
+  const offerLines = offer.length
+    ? offer.map(p => `  ${p.pos} ${p.name}${p.value ? ' (FC value: ' + p.value.toLocaleString() + ')' : ''}`).join('\n')
+    : '  (nothing selected yet)';
+
+  const wantLines = want.length
+    ? want.map(p => `  ${p.pos} ${p.name}${p.value ? ' (FC value: ' + p.value.toLocaleString() + ')' : ''}`).join('\n')
+    : '  (nothing selected yet)';
+
+  const targetCtx = wantTeam
+    ? `Target team: ${wantTeam.name} (${(wantTeam.players||[]).length} players)\nPlayers I want from them:\n${wantLines}`
+    : mode === 'offer'
+      ? 'Mode: shopping my offer across all teams'
+      : 'No specific target team selected yet';
+
+  const roster = _rosterLines(my);
+
+  return `You are ${gmName}, General Manager of ${my?.name || 'the team'} in ${league?.name || 'a dynasty league'}. You are in the Trade Finder helping your GM analyze trade opportunities.
+
+CURRENT TRADE FINDER CONTEXT:
+Players I'm offering:
+${offerLines}
+
+${targetCtx}
+
+${roster ? 'Full roster:\n' + roster : ''}
+${FC_VALUES ? '' : '\n(Note: FantasyCalc dynasty values not loaded — give general advice without specific valuations)'}
+
+Your job: give direct, actionable trade advice based on the current offer and target. Reference real players and values. When relevant, explain who to target, what return to expect, and how to frame the conversation with the other manager. Be specific — not generic. Keep responses under 150 words unless asked for more detail.`;
+}
+
+async function sendTfv2GmMessage(msg) {
+  if (!msg || !msg.trim()) return;
+  const my2 = S.teams.find(t => t.isMyTeam) || S.teams[0];
+  const gm  = (curStaff().hired || {}).gm || {};
+  const gmName = gm.firstName ? `${gm.firstName} ${gm.lastName || ''}`.trim() : 'Marcus Williams';
+
+  U.tfv2GmChat = [...(U.tfv2GmChat || []), { side:'user', msg: esc(msg) }, { side:'gm', msg: `<span style="animation:sp .8s linear infinite;display:inline-block">⏳</span> <em style="color:var(--muted)">Thinking…</em>` }];
+  render();
+  requestAnimationFrame(() => { const el = document.getElementById('tfv2-gm-bottom'); if (el) el.scrollIntoView({ behavior:'smooth' }); });
+
+  const fallback = () => {
+    const resp = gmTradeResponse(msg, my2, S.teams, _curLeague());
+    U.tfv2GmChat = [...(U.tfv2GmChat || []).slice(0, -1), { side:'gm', msg: resp }];
+    render();
+    requestAnimationFrame(() => { const el = document.getElementById('tfv2-gm-bottom'); if (el) el.scrollIntoView({ behavior:'smooth' }); });
+  };
+
+  if (!CLAUDE_API_KEY) { fallback(); return; }
+
+  try {
+    const history  = (U.tfv2GmChat || []).slice(0, -2); // exclude user msg + placeholder
+    const claudeMsgs = [
+      ...history.flatMap(m => m.side === 'user'
+        ? [{ role:'user',      content: m.msg.replace(/<[^>]+>/g,'') }]
+        : [{ role:'assistant', content: m.msg.replace(/<[^>]+>/g,'') }]),
+      { role:'user', content: msg },
+    ];
+    const reply = await callClaudeAPI(buildTfv2GmSystemPrompt(), claudeMsgs);
+    const header = `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">📊 ${esc(gmName)} — General Manager</div>`;
+    U.tfv2GmChat = [...(U.tfv2GmChat || []).slice(0, -1), { side:'gm', msg: header + esc(reply).replace(/\n/g,'<br>') }];
+    render();
+    requestAnimationFrame(() => { const el = document.getElementById('tfv2-gm-bottom'); if (el) el.scrollIntoView({ behavior:'smooth' }); });
+  } catch(e) {
+    fallback();
+  }
 }
 
 function buildTradeAdvisorSystemPrompt() {
