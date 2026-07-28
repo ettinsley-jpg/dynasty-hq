@@ -1,6 +1,5 @@
 // Netlify Function: /.netlify/functions/prospects
 // Fetches NFL draft prospect rankings from ESPN for a given draft year.
-// Filters to skill positions (QB/RB/WR/TE) and returns structured prospect data.
 
 const POS_MAP = { '8': 'QB', '9': 'RB', '1': 'WR', '7': 'TE' };
 const SKILL_POS_IDS = new Set(Object.keys(POS_MAP));
@@ -18,87 +17,72 @@ function gradeToTier(grade) {
   return (TIER_THRESHOLDS.find(t => g >= t.min) || { tier: 'Sleeper' }).tier;
 }
 
-async function fetchRound(year, round) {
-  const url = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/draft?year=${year}&round=${round}`;
-  const res = await fetch(url);
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data.picks || [];
-}
-
-function ok(body) {
+function respond(statusCode, body) {
   return {
-    statusCode: 200,
-    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    statusCode,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
     body: JSON.stringify(body),
   };
 }
 
-function err(msg, code = 500) {
-  return {
-    statusCode: code,
-    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify({ error: msg }),
-  };
-}
-
 exports.handler = async (event) => {
-  const { year } = event.queryStringParameters || {};
-  if (!year) return err('Missing year parameter', 400);
+  if (event.httpMethod === 'OPTIONS') {
+    return respond(200, {});
+  }
 
-  const yr = parseInt(year);
-  if (isNaN(yr) || yr < 2026 || yr > 2032) return err('Invalid year', 400);
+  const params = event.queryStringParameters || {};
+  const yr = parseInt(params.year);
+  if (!yr || yr < 2026 || yr > 2032) {
+    return respond(400, { error: 'Invalid or missing year parameter' });
+  }
 
   try {
-    // Fetch rounds 1-3 to get enough skill position prospects
-    const [r1, r2, r3] = await Promise.all([
-      fetchRound(yr, 1),
-      fetchRound(yr, 2),
-      fetchRound(yr, 3),
-    ]);
+    const url = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/draft?year=${yr}&round=1&limit=300`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; DynastyHQ/1.0)' },
+    });
 
-    const allPicks = [...r1, ...r2, ...r3];
-    const seen = new Set();
-    const prospects = [];
+    if (!res.ok) {
+      return respond(502, { error: `ESPN returned ${res.status}` });
+    }
 
-    for (const pick of allPicks) {
+    const data = await res.json();
+    const picks = data.picks || [];
+
+    const byPos = {};
+    for (const pick of picks) {
       const a = pick.athlete || {};
-      const posId = a.position?.id;
+      const posId = String(a.position?.id || '');
       if (!SKILL_POS_IDS.has(posId)) continue;
 
-      const name = a.displayName;
-      if (!name || seen.has(name)) continue;
-      seen.add(name);
-
+      const pos = POS_MAP[posId];
       const attrs = a.attributes || [];
-      const grade = attrs.find(x => x.name === 'grade')?.displayValue || '75';
+      const grade    = parseInt(attrs.find(x => x.name === 'grade')?.displayValue   || '75');
       const overallRank = parseInt(attrs.find(x => x.name === 'overall')?.displayValue || '999');
-      const posRank = parseInt(attrs.find(x => x.name === 'rank')?.displayValue || '999');
+      const posRank     = parseInt(attrs.find(x => x.name === 'rank')?.displayValue    || '999');
 
-      prospects.push({
-        name,
-        pos: POS_MAP[posId],
+      if (!byPos[pos]) byPos[pos] = [];
+      byPos[pos].push({
+        name: a.displayName,
+        pos,
         school: a.team?.shortDisplayName || a.team?.location || '',
-        grade: parseInt(grade),
+        grade,
         overallRank,
         posRank,
         tier: gradeToTier(grade),
-        headshot: a.headshot?.href || null,
       });
     }
 
-    // Group by position, sort by posRank within each
-    const byPos = {};
-    for (const p of prospects) {
-      if (!byPos[p.pos]) byPos[p.pos] = [];
-      byPos[p.pos].push(p);
-    }
     for (const pos of Object.keys(byPos)) {
       byPos[pos].sort((a, b) => a.posRank - b.posRank);
     }
 
-    return ok({ year: yr, byPos, fetchedAt: Date.now() });
+    return respond(200, { year: yr, byPos, fetchedAt: Date.now() });
   } catch (e) {
-    return err('Failed to fetch prospects: ' + e.message);
+    return respond(500, { error: e.message || 'Unknown error' });
   }
 };
