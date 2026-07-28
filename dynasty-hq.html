@@ -4928,22 +4928,49 @@ function renderCoachesOffice() {
   </div>` : ''}`;
 
 
-  const scoreBanner = matchup ? `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 20px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:8px">
-    <div style="text-align:left;min-width:90px">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(my.name)}</div>
-      <div style="font-size:30px;font-weight:900;color:${matchup.myPoints>=matchup.oppPoints?'#86efac':'var(--text)'};line-height:1">${matchup.myPoints.toFixed(2)}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:2px">${matchup.myPoints>=matchup.oppPoints?'▲ Leading':'▼ Trailing'}</div>
+  // Compute projected totals from starter slots
+  const myProjTotal = mySlots.reduce((sum, {player}) => sum + (getProj(player?.id) || 0), 0);
+
+  // My Team banner: single team, projected total only
+  const myTeamBanner = `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 20px;margin-bottom:14px;display:flex;align-items:center;gap:16px">
+    <div style="flex:1">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(my.name)}</div>
+      <div style="font-size:30px;font-weight:900;color:var(--gold);line-height:1">${myProjTotal > 0 ? myProjTotal.toFixed(2) : '—'}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">📊 Projected · Week ${week}</div>
     </div>
-    <div style="text-align:center;flex-shrink:0">
-      <div style="font-size:11px;font-weight:700;color:var(--muted)">WEEK ${week}</div>
-      <div style="font-size:13px;font-weight:700;color:var(--muted);margin-top:2px">VS</div>
-    </div>
-    <div style="text-align:right;min-width:90px">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(matchup.oppTeamName)}</div>
-      <div style="font-size:30px;font-weight:900;color:${matchup.oppPoints>matchup.myPoints?'#86efac':'var(--text)'};line-height:1">${matchup.oppPoints.toFixed(2)}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:2px">${matchup.oppPoints>matchup.myPoints?'▲ Leading':'▼ Trailing'}</div>
-    </div>
-  </div>` : '';
+  </div>`;
+
+  // Matchup banner: live scores if available, else projected totals
+  const liveActive = matchup && (matchup.myPoints > 0 || matchup.oppPoints > 0);
+  const scoreBanner = matchup ? (() => {
+    const myDisp  = liveActive ? matchup.myPoints  : myProjTotal;
+    const oppDisp = liveActive ? matchup.oppPoints : (() => {
+      const oppTeam = S.teams.find(t => t.id === 'sl_'+(matchup.oppRosterId||''));
+      if (oppTeam) {
+        return buildLineup(oppTeam.players||[], league?.leagueRules?.rosterPositions).slots
+          .reduce((s, {player}) => s + (getProj(player?.id) || 0), 0);
+      }
+      return (matchup.oppStarters||[]).reduce((s, pid) => s + (getProj('sl_'+pid) || 0), 0);
+    })();
+    const label = liveActive ? 'Live' : 'Projected';
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 20px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div style="text-align:left;min-width:90px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(my.name)}</div>
+        <div style="font-size:30px;font-weight:900;color:${myDisp>=oppDisp?'#86efac':'var(--text)'};line-height:1">${myDisp > 0 ? myDisp.toFixed(2) : '—'}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">${myDisp>=oppDisp?'▲ Leading':'▼ Trailing'}</div>
+      </div>
+      <div style="text-align:center;flex-shrink:0">
+        <div style="font-size:11px;font-weight:700;color:var(--muted)">WEEK ${week}</div>
+        <div style="font-size:13px;font-weight:700;color:var(--muted);margin-top:2px">VS</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:3px">📊 ${label}</div>
+      </div>
+      <div style="text-align:right;min-width:90px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(matchup.oppTeamName)}</div>
+        <div style="font-size:30px;font-weight:900;color:${oppDisp>myDisp?'#86efac':'var(--text)'};line-height:1">${oppDisp > 0 ? oppDisp.toFixed(2) : '—'}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">${oppDisp>myDisp?'▲ Leading':'▼ Trailing'}</div>
+      </div>
+    </div>`;
+  })() : '';
 
   const isHistorical = INTEL.projIsHistorical;
   const noProxyCopy = !hasProj && !isOffSeason && !INTEL.coachLoading
@@ -4977,7 +5004,7 @@ function renderCoachesOffice() {
         <div style="display:flex;align-items:flex-start;position:relative">${weekNav}</div>
       </div>
       ${buildCoachCard('team')}
-      ${scoreBanner}
+      ${myTeamBanner}
       ${loadStrip}
       <div class="card" style="padding:0;overflow:hidden;margin-bottom:14px">
         <div style="padding:10px 16px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
