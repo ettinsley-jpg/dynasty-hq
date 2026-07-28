@@ -3725,12 +3725,6 @@ function renderGMDashHome() {
 
     <!-- GM Briefing card -->
     ${renderGMBriefingCard(my, league, scoutedTeams)}
-
-    <!-- Age Curve Risk Flags -->
-    ${renderAgeCurveFlags(my)}
-
-    <!-- Buy-Low Radar -->
-    ${renderBuyLowRadar(my)}
   </div>`;
 }
 
@@ -3766,26 +3760,70 @@ function renderDepthChart() {
 
 function renderGMScanner() {
   const my = S.teams.find(t => t.isMyTeam);
+  const activeTab = U.marketTab || 'scanner';
+
+  const subTabs = [
+    { id:'scanner',   label:'🗺️ Market Scanner',            sub:'Seller & buyer signals by position' },
+    { id:'agecurve',  label:'📉 Age Curve Flags',           sub:'Roster aging risk alerts' },
+    { id:'buylow',    label:'📈 Buy-Low Radar',             sub:'Value vs. production gaps' },
+    { id:'picktrack', label:'📡 Pick Acquisition',          sub:'Win-now & rebuild targets' },
+    { id:'timeline',  label:'📊 Trade Value Timeline',      sub:'Coming soon' },
+    { id:'rental',    label:'🔄 Rental vs. Asset Alerts',   sub:'Coming soon' },
+  ];
+
+  const subNav = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:20px">
+    ${subTabs.map(t => {
+      const isActive = activeTab === t.id;
+      const isSoon   = t.sub === 'Coming soon';
+      return `<button data-act="market-subtab" data-val="${t.id}"
+        style="padding:8px 6px;border-radius:10px;border:1px solid ${isActive?'rgba(245,158,11,.5)':'var(--border)'};
+          background:${isActive?'rgba(245,158,11,.1)':'var(--card)'};cursor:${isSoon?'default':'pointer'};text-align:center;opacity:${isSoon?.6:1}">
+        <div style="font-weight:700;font-size:12px;color:${isActive?'#f59e0b':'var(--text)'}">${t.label}</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:2px">${t.sub}</div>
+      </button>`;
+    }).join('')}
+  </div>`;
+
+  const fcBanner = !FC_VALUES
+    ? `<div style="background:#0d1a2a;border:1px solid #2563eb;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div style="font-size:13px;color:#93c5fd">Load FantasyCalc values for value-weighted analysis.</div>
+        <button class="btn btn-gold" data-act="load-fc">Load Dynasty Values</button>
+      </div>`
+    : `<div style="font-size:12px;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:6px">
+        <span style="width:8px;height:8px;background:#22c55e;border-radius:50%;display:inline-block"></span>
+        FantasyCalc dynasty values loaded · ${Object.keys(FC_VALUES).length} players ranked
+      </div>`;
+
+  let content = '';
+  if (activeTab === 'scanner') {
+    content = `${renderPickAcquisitionTracker(my)}${renderTeamNeedMatrix(my)}${renderMarketScanner(my)}`;
+  } else if (activeTab === 'agecurve') {
+    content = renderAgeCurveFlags(my);
+  } else if (activeTab === 'buylow') {
+    content = renderBuyLowRadar(my);
+  } else if (activeTab === 'picktrack') {
+    content = renderPickAcquisitionTracker(my) + renderTeamNeedMatrix(my);
+  } else {
+    content = `<div style="text-align:center;padding:48px 20px;color:var(--muted)">
+      <div style="font-size:32px;margin-bottom:12px">${activeTab==='timeline'?'📊':'🔄'}</div>
+      <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px">${activeTab==='timeline'?'Trade Value Timeline':'Rental vs. Asset Alerts'}</div>
+      <div style="font-size:13px">Coming soon — this tool is under construction.</div>
+    </div>`;
+  }
+
   return `<div class="page">
     <div class="page-hd">
       <div style="display:flex;align-items:center;gap:10px">
         <button class="btn btn-sm" data-act="gm-dash-tab" data-val="home" style="font-size:12px;background:var(--gold);color:#000;font-weight:700;border:none">← Dashboard</button>
         <div>
           <div class="page-title">🗺️ Market Analyzer</div>
-          <div class="page-sub">League-wide position value — find sellers and buyers</div>
+          <div class="page-sub">Scanner · Age Curve · Buy-Low · Picks · Alerts</div>
         </div>
       </div>
     </div>
-    ${!FC_VALUES ? `<div style="background:#0d1a2a;border:1px solid #2563eb;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-      <div style="font-size:13px;color:#93c5fd">Load FantasyCalc values for value-weighted analysis.</div>
-      <button class="btn btn-gold" data-act="load-fc">Load Dynasty Values</button>
-    </div>` : `<div style="font-size:12px;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:6px">
-      <span style="width:8px;height:8px;background:#22c55e;border-radius:50%;display:inline-block"></span>
-      FantasyCalc dynasty values loaded · ${Object.keys(FC_VALUES).length} players ranked
-    </div>`}
-    ${renderPickAcquisitionTracker(my)}
-    ${renderTeamNeedMatrix(my)}
-    ${renderMarketScanner(my)}
+    ${subNav}
+    ${fcBanner}
+    ${content}
   </div>`;
 }
 
@@ -7959,6 +7997,9 @@ document.addEventListener('click', e => {
 
     case 'toggle-buy-low':
       U.buyLowOpen = !(U.buyLowOpen !== false); render(); break;
+
+    case 'market-subtab':
+      U.marketTab = btn.dataset.val; render(); break;
 
     case 'toggle-pick-tracker':
       U.pickTrackerOpen = !(U.pickTrackerOpen !== false); render(); break;
