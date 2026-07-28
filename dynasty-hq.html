@@ -3512,7 +3512,7 @@ async function loadPreDraftRankings(year) {
   U.lstPreDraftLoading = true;
   render();
   try {
-    const res = await fetch(`/.netlify/functions/prospects?year=${year}`);
+    const res = await fetch(`/api/prospects?year=${year}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     U.lstPreDraft = { ...(U.lstPreDraft||{}), [year]: data.byPos };
@@ -3678,7 +3678,7 @@ async function generateDraftBoard() {
   const y1 = curYear + 1, y2 = curYear + 2;
 
   async function fetchClass(year) {
-    const res = await fetch(`/.netlify/functions/prospects?year=${year}`);
+    const res = await fetch(`/api/prospects?year=${year}`);
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${year} class`);
     return res.json();
   }
@@ -11369,7 +11369,7 @@ async function callClaudeAPI(systemPrompt, messages, maxTokens = 1024) {
   };
 
   // Try local proxy first, then Netlify function
-  const endpoints = ['http://localhost:3001/claude', '/.netlify/functions/claude'];
+  const endpoints = ['http://localhost:3001/claude', '/api/claude'];
   let lastErr;
   for (const url of endpoints) {
     try {
