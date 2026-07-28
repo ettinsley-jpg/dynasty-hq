@@ -6616,7 +6616,7 @@ function renderPickAcquisitionTracker(my) {
       <div style="font-size:13px;font-weight:700">📡 Pick Acquisition Tracker</div>
       <div style="font-size:11px;color:var(--muted);margin-top:2px">Win-now teams selling picks · Rebuilders selling players</div>
     </div>
-    <button class="btn btn-sm" data-act="toggle-pick-tracker" style="font-size:11px">
+    <button class="btn btn-outline btn-sm" data-act="toggle-pick-tracker">
       ${showTracker ? '▲ Collapse' : '▼ Expand'}
     </button>
   </div>
@@ -6777,7 +6777,7 @@ function renderTeamNeedMatrix(my) {
       <div style="font-size:13px;font-weight:700">Team Need Matrix</div>
       <div style="font-size:11px;color:var(--muted);margin-top:2px">Dynasty value depth vs. league average per position</div>
     </div>
-    <button class="btn ${showTargets ? 'btn-gold' : 'btn-sm'}" data-act="toggle-need-matrix-targets" style="font-size:12px">
+    <button class="btn ${showTargets ? 'btn-gold' : 'btn-outline'} btn-sm" data-act="toggle-need-matrix-targets">
       ${showTargets ? '✕ Hide Trade Targets' : '🎯 Generate Trade Targets'}
     </button>
   </div>
