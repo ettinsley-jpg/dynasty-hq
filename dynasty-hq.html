@@ -7999,7 +7999,9 @@ document.addEventListener('click', e => {
       U.buyLowOpen = !(U.buyLowOpen !== false); render(); break;
 
     case 'market-subtab':
-      U.marketTab = btn.dataset.val; render(); break;
+      U.marketTab = btn.dataset.val;
+      if (btn.dataset.val === 'picktrack') U.needMatrixTargets = true;
+      render(); break;
 
     case 'toggle-pick-tracker':
       U.pickTrackerOpen = !(U.pickTrackerOpen !== false); render(); break;
