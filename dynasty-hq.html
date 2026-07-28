@@ -5179,9 +5179,12 @@ function renderTradeTools() {
 
   return `<div class="page">
     <div class="page-hd">
-      <div>
-        <div class="page-title">⚖️ Trade Tools</div>
-        <div class="page-sub">Analyzer · Finder · Advisor</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn btn-sm" data-act="go-tab" data-val="gmboard" style="font-size:12px;background:var(--gold);color:#000;font-weight:700;border:none">← Dashboard</button>
+        <div>
+          <div class="page-title">⚖️ Trade Tools</div>
+          <div class="page-sub">Analyzer · Finder · Advisor</div>
+        </div>
       </div>
     </div>
     ${subNav}
