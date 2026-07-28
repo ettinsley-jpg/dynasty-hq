@@ -3652,6 +3652,161 @@ function renderTradeValueTimeline(my) {
   `;
 }
 
+function renderRentalAssetAlerts(my) {
+  const PRIME = { QB:[26,32,35], RB:[22,26,29], WR:[24,28,31], TE:[25,29,32] };
+  const STARTERS = { QB:2, RB:3, WR:4, TE:1 };
+
+  if (!S.teams || S.teams.length < 2) {
+    return `<div style="text-align:center;padding:32px 20px;color:var(--muted);font-size:13px">Import your league to see team profiles.</div>`;
+  }
+
+  function classifyPlayer(p) {
+    const fc     = (FC_VALUES && FC_VALUES[p.id]) || {};
+    const value  = fc.value || 0;
+    const trend  = fc.trend || 0;
+    const age    = p.age || 0;
+    const pos    = p.pos;
+    const window = PRIME[pos];
+    if (!window || !age) return null;
+    const [ps, pe, cliff] = window;
+
+    // Urgency: 0–10. Higher = more urgent to sell now.
+    let urgency = 0;
+    let type, typeColor, typeLabel;
+
+    if (age >= cliff) {
+      type = 'rental'; typeColor = '#fca5a5'; typeLabel = '🔴 Rental';
+      urgency = Math.min(10, 6 + (age - cliff) * 2 + (trend < -100 ? 2 : 0));
+    } else if (age >= cliff - 1) {
+      type = 'rental'; typeColor = '#fdba74'; typeLabel = '🟠 Near Cliff';
+      urgency = Math.min(10, 5 + (trend < -100 ? 2 : 0));
+    } else if (age >= pe) {
+      type = 'borderline'; typeColor = '#fde68a'; typeLabel = '🟡 Post-Prime';
+      urgency = Math.min(10, 3 + Math.round((age - pe) * 1.5) + (trend < -100 ? 1 : 0));
+    } else if (age <= ps + 1) {
+      type = 'asset'; typeColor = '#86efac'; typeLabel = '🟢 Asset';
+      urgency = 0;
+    } else {
+      type = 'asset'; typeColor = '#93c5fd'; typeLabel = '🔵 Prime';
+      urgency = 1;
+    }
+
+    const seasonsLeft = Math.max(0, cliff - age);
+    return { ...p, fc, value, trend, age, pos, type, typeColor, typeLabel, urgency, seasonsLeft, cliff };
+  }
+
+  function teamProfile(team) {
+    const lineup = buildLineup(team.players || [], null);
+    const starters = lineup.slots.map(s => s.player).filter(p => p && ['QB','RB','WR','TE'].includes(p.pos));
+    const classified = starters.map(classifyPlayer).filter(Boolean);
+
+    const rentals    = classified.filter(p => p.type === 'rental');
+    const borderline = classified.filter(p => p.type === 'borderline');
+    const assets     = classified.filter(p => p.type === 'asset');
+    const totalScore = classified.reduce((s, p) => s + p.urgency, 0);
+    const maxScore   = classified.length * 10 || 1;
+    const rentalPct  = Math.round((rentals.length + borderline.length * 0.5) / (classified.length || 1) * 100);
+
+    let profile, profileColor, profileBg;
+    if (rentalPct >= 55) {
+      profile = 'Rental Heavy'; profileColor = '#fca5a5'; profileBg = 'rgba(239,68,68,.1)';
+    } else if (rentalPct >= 35) {
+      profile = 'Mixed Window'; profileColor = '#fde68a'; profileBg = 'rgba(234,179,8,.08)';
+    } else {
+      profile = 'Asset Heavy'; profileColor = '#86efac'; profileBg = 'rgba(34,197,94,.08)';
+    }
+
+    return { team, starters: classified, rentals, borderline, assets, totalScore, rentalPct, profile, profileColor, profileBg };
+  }
+
+  const filter  = U.rentalFilter || 'all';
+  const allProfiles = S.teams.map(teamProfile)
+    .sort((a, b) => {
+      if (a.team.isMyTeam) return -1;
+      if (b.team.isMyTeam) return 1;
+      return b.rentalPct - a.rentalPct;
+    });
+
+  const displayed = allProfiles.filter(p => {
+    if (filter === 'rental')  return p.profile === 'Rental Heavy';
+    if (filter === 'mixed')   return p.profile === 'Mixed Window';
+    if (filter === 'asset')   return p.profile === 'Asset Heavy';
+    return true;
+  });
+
+  function urgencyBar(score) {
+    const pct = Math.min(100, score * 10);
+    const col  = score >= 7 ? '#fca5a5' : score >= 4 ? '#fde68a' : '#86efac';
+    return `<div style="height:4px;border-radius:2px;background:var(--bg2);overflow:hidden;margin-top:3px">
+      <div style="height:100%;width:${pct}%;background:${col};border-radius:2px;transition:width .3s"></div>
+    </div>`;
+  }
+
+  function teamCard(prof) {
+    const { team, starters, rentals, borderline, assets, rentalPct, profile, profileColor, profileBg } = prof;
+    const isMe = team.isMyTeam;
+
+    const topPlayers = [...rentals, ...borderline]
+      .sort((a, b) => b.urgency - a.urgency)
+      .slice(0, 4);
+
+    const playerRows = topPlayers.map(p => {
+      const urgencyLabel = p.urgency >= 8 ? 'Sell Now' : p.urgency >= 5 ? 'Sell High' : 'Monitor';
+      const urgencyCol   = p.urgency >= 8 ? '#fca5a5' : p.urgency >= 5 ? '#fdba74' : '#fde68a';
+      const findTrade = isMe && p.value > 0 ? `<button class="btn btn-sm btn-outline" style="font-size:10px;padding:2px 8px"
+        data-act="rental-find-trade"
+        data-offer-id="${esc(p.id)}" data-offer-name="${esc(p.name)}"
+        data-offer-pos="${esc(p.pos)}" data-offer-val="${p.value}">Find Trade</button>` : '';
+      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div>
+          <div style="font-size:10px;color:var(--muted)">${p.pos} · Age ${p.age} · ${p.seasonsLeft === 0 ? 'At/past cliff' : p.seasonsLeft + ' season' + (p.seasonsLeft !== 1 ? 's' : '') + ' left'}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:10px;font-weight:700;color:${urgencyCol}">${urgencyLabel}</div>
+          <div style="font-size:10px;color:var(--muted)">${urgencyBar(p.urgency)}</div>
+        </div>
+        ${findTrade}
+      </div>`;
+    }).join('');
+
+    const assetNames = assets.slice(0, 3).map(p => `${p.name} (${p.pos})`).join(', ');
+
+    return `<div style="background:var(--card);border:1px solid ${isMe ? 'rgba(245,158,11,.4)' : 'var(--border)'};border-radius:10px;padding:14px 16px;margin-bottom:10px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px">
+        <div>
+          <div style="font-weight:700;font-size:14px">${esc(team.name)}${isMe ? ' <span style="font-size:10px;color:var(--gold)">(My Team)</span>' : ''}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">
+            ${rentals.length} rental${rentals.length !== 1 ? 's' : ''} · ${borderline.length} near cliff · ${assets.length} asset${assets.length !== 1 ? 's' : ''}
+          </div>
+        </div>
+        <div style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;background:${profileBg};color:${profileColor};border:1px solid ${profileColor}40;white-space:nowrap;flex-shrink:0">${profile}</div>
+      </div>
+      ${topPlayers.length ? `<div style="margin-bottom:8px">${playerRows}</div>` : ''}
+      ${assetNames ? `<div style="font-size:10px;color:#86efac;margin-top:6px">✓ Assets: ${assetNames}</div>` : ''}
+    </div>`;
+  }
+
+  const filterBtns = ['all','rental','mixed','asset'].map(f => {
+    const labels = { all:'All Teams', rental:'Rental Heavy', mixed:'Mixed', asset:'Asset Heavy' };
+    const active = filter === f;
+    return `<button data-act="rental-filter" data-val="${f}"
+      style="padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;
+        border:1px solid ${active ? 'rgba(245,158,11,.5)' : 'var(--border)'};
+        background:${active ? 'rgba(245,158,11,.12)' : 'var(--card)'};
+        color:${active ? '#f59e0b' : 'var(--muted)'}">${labels[f]}</button>`;
+  }).join('');
+
+  return `
+    <div style="margin-bottom:12px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:2px">🔄 Rental vs. Asset Alerts</div>
+      <div style="font-size:11px;color:var(--muted)">League-wide team profiles by age cliff proximity — find sellers and buyers</div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${filterBtns}</div>
+    ${displayed.length ? displayed.map(teamCard).join('') : `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">No teams match this filter.</div>`}
+  `;
+}
+
 function renderBuyLowRadar(my) {
   if (!my || !FC_VALUES || !INTEL.ecr || !Object.keys(INTEL.ecr).length) return '';
 
@@ -3948,7 +4103,7 @@ function renderGMScanner() {
     { id:'buylow',    label:'📈 Buy-Low Radar',             sub:'Value vs. production gaps' },
     { id:'picktrack', label:'📡 Pick Acquisition',          sub:'Win-now & rebuild targets' },
     { id:'timeline',  label:'📊 Trade Value Timeline',      sub:'Buy / Hold / Sell signals' },
-    { id:'rental',    label:'🔄 Rental vs. Asset Alerts',   sub:'Coming soon' },
+    { id:'rental',    label:'🔄 Rental vs. Asset Alerts',   sub:'League-wide age cliff profiles' },
   ];
 
   const subNav = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:20px">
@@ -3985,12 +4140,8 @@ function renderGMScanner() {
     content = renderPickAcquisitionTracker(my) + renderTeamNeedMatrix(my);
   } else if (activeTab === 'timeline') {
     content = renderTradeValueTimeline(my);
-  } else {
-    content = `<div style="text-align:center;padding:48px 20px;color:var(--muted)">
-      <div style="font-size:32px;margin-bottom:12px">🔄</div>
-      <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px">Rental vs. Asset Alerts</div>
-      <div style="font-size:13px">Coming soon — this tool is under construction.</div>
-    </div>`;
+  } else if (activeTab === 'rental') {
+    content = renderRentalAssetAlerts(my);
   }
 
   return `<div class="page">
@@ -8178,6 +8329,20 @@ document.addEventListener('click', e => {
       render(); break;
 
     case 'tvl-search': break; // handled via input event
+
+    case 'rental-filter':
+      U.rentalFilter = btn.dataset.val; render(); break;
+
+    case 'rental-find-trade': {
+      const offerId = btn.dataset.offerId;
+      U.tfv2Mode  = 'offer';
+      U.tfv2Offer = offerId ? [{ id:offerId, name:btn.dataset.offerName, pos:btn.dataset.offerPos, value:parseInt(btn.dataset.offerVal)||0 }] : [];
+      U.tfv2Want  = [];
+      U.tfv2Team  = null;
+      U.tab       = 'trades';
+      U.tradeTab  = 'tradefind';
+      render(); break;
+    }
 
     case 'toggle-pick-tracker':
       U.pickTrackerOpen = !(U.pickTrackerOpen !== false); render(); break;
