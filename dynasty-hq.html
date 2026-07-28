@@ -6590,51 +6590,6 @@ function renderTeamNeedMatrix(my) {
 
   ${showTargets ? `<div style="margin-bottom:16px">${targetCards}${noTargets}</div>` : ''}
 
-  <div style="overflow-x:auto;margin-bottom:24px">
-  <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:400px">
-    <thead>
-      <tr style="border-bottom:2px solid var(--border)">
-        <th style="text-align:left;padding:8px 10px;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap">Team</th>
-        ${positions.map(pos => `<th style="padding:8px 6px;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.05em;text-align:center">${pos}<br><span style="font-weight:400;opacity:.55">${(leagueAvgs[pos].avgTotal/1000).toFixed(1)}k avg</span></th>`).join('')}
-        <th style="padding:8px 6px;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.05em;text-align:center">Picks</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${rowData.map(({ team, isMe, posData, pickVal, pickCls }) => {
-        const cs = isMe ? 'background:rgba(245,158,11,.08);' : '';
-        return `<tr style="border-bottom:1px solid var(--border);${cs}">
-          <td style="padding:7px 10px;font-weight:${isMe?700:500};white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis;color:${isMe?'var(--gold)':'var(--text)'}">
-            ${isMe ? '★ ' : ''}${esc(team.name)}
-          </td>
-          ${positions.map(pos => {
-            const d  = posData[pos];
-            const st = cellStyle[d.cls];
-            const pct = leagueAvgs[pos].avgTotal > 0 ? Math.round((d.ratio - 1) * 100) : 0;
-            return `<td style="padding:5px 6px;text-align:center;background:${st.bg}">
-              <div style="font-size:13px">${st.dot}</div>
-              <div style="font-size:9px;color:${st.color};margin-top:1px;font-variant-numeric:tabular-nums">${pct>0?'+':''}${pct}%</div>
-            </td>`;
-          }).join('')}
-          ${(() => {
-            const st = cellStyle[pickCls];
-            const pct = avgPickVal > 0 ? Math.round((pickVal/avgPickVal - 1)*100) : 0;
-            return `<td style="padding:5px 6px;text-align:center;background:${st.bg}">
-              <div style="font-size:13px">${st.dot}</div>
-              <div style="font-size:9px;color:${st.color};margin-top:1px;font-variant-numeric:tabular-nums">${pct>0?'+':''}${pct}%</div>
-            </td>`;
-          })()}
-        </tr>`;
-      }).join('')}
-    </tbody>
-  </table>
-  </div>
-  <div style="display:flex;gap:14px;margin-top:-10px;margin-bottom:20px;font-size:11px;flex-wrap:wrap;color:var(--muted)">
-    <span>🟢 Surplus (>+18% vs avg)</span>
-    <span>⚪ Balanced</span>
-    <span>🔴 Need (&lt;-18% vs avg)</span>
-    <span style="opacity:.6">% = team total vs league avg</span>
-  </div>
-
   <div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:8px">
     <div style="font-size:13px;font-weight:700;margin-bottom:2px">Market Scanner</div>
     <div style="font-size:11px;color:var(--muted)">Detailed seller / buyer signals by position</div>
