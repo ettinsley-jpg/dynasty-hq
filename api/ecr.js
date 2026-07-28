@@ -76,5 +76,6 @@ function normalizePlayers(raw) {
     name:       p.player_name ?? p.player ?? p.name ?? '',
     team:       p.player_team_id ?? p.team ?? '',
     pos:        p.player_position_id ?? p.pos ?? '',
+    age:        p.player_age != null ? parseInt(p.player_age) : null,
   })).filter(p => p.name);
 }

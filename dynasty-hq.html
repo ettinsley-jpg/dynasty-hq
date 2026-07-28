@@ -3274,6 +3274,163 @@ function renderGMBoard() {
   return renderGMDashHome();
 }
 
+function renderAgeCurveFlags(my) {
+  if (!my || !INTEL.ecr || !Object.keys(INTEL.ecr).length) return '';
+
+  const POS_CLIFFS = { RB: 28, WR: 30, TE: 31, QB: 35 };
+
+  const COMPARABLES = {
+    'RB-27': { player: 'Kareem Hunt', note: 'Solid depth piece at 28–29, team cuts accelerated his exit' },
+    'RB-28': { player: 'Dalvin Cook', note: 'Peaked at 29, released at 30, out of the league at 31' },
+    'RB-29': { player: 'LeSean McCoy', note: 'Ranked top-20 dynasty at 29, dropped to unowned by 31' },
+    'RB-30': { player: 'Frank Gore', note: 'Produced 4 more volume years, but dynasty value cratered at 31' },
+    'WR-29': { player: 'Amari Cooper', note: 'Productive into 30, but dynasty value declined faster than real-life output' },
+    'WR-30': { player: 'Emmanuel Sanders', note: 'Solid floor through 31, rapid dynasty collapse at 32' },
+    'WR-31': { player: 'Larry Fitzgerald', note: 'Maintained volume production, but dynasty rank fell sharply' },
+    'WR-32': { player: 'Dez Bryant', note: 'Released at 30, never recaptured elite production' },
+    'TE-29': { player: 'Zach Ertz', note: 'Top-10 TE at 31, essentially unowned in dynasty by 33' },
+    'TE-30': { player: 'Greg Olsen', note: 'Injuries compounded after 31, value dropped precipitously' },
+    'TE-31': { player: 'Jason Witten', note: 'Became a low-upside volume play well past his dynasty prime' },
+    'QB-33': { player: 'Cam Newton', note: 'MVP-caliber peak through early 30s, then shoulder injuries ended his dynasty window' },
+    'QB-35': { player: 'Matthew Stafford', note: 'Still starting at 36, but dynasty value closely tracks team situation' },
+    'QB-36': { player: 'Ben Roethlisberger', note: 'Productive into late 30s, but dynasty value was volume-only' },
+  };
+
+  function getComparable(pos, age) {
+    const prefix = pos + '-';
+    const ages = Object.keys(COMPARABLES).filter(k => k.startsWith(prefix)).map(k => parseInt(k.split('-')[1])).sort((a,b) => a - b);
+    const match = ages.filter(a => a <= age).pop();
+    return match ? COMPARABLES[`${pos}-${match}`] : null;
+  }
+
+  function getSeverity(pos, age, dynRank) {
+    const cliff = POS_CLIFFS[pos];
+    if (!cliff || !age) return null;
+    const isValuable = !dynRank || dynRank <= 250;
+    if (age >= cliff && isValuable) return 'fire';
+    if ((cliff - age) <= 2 && isValuable) return 'warn';
+    return null;
+  }
+
+  function getProjectedRank(pos, age, curRank) {
+    if (!curRank) return null;
+    const cliff = POS_CLIFFS[pos];
+    if (!cliff) return null;
+    const yearsOver = Math.max(0, age - cliff + 1);
+    const multiplier = yearsOver >= 2 ? 4.5 : yearsOver === 1 ? 2.8 : 1.9;
+    return Math.min(999, Math.round(curRank * multiplier));
+  }
+
+  function getSellWindow(pos, age, severity) {
+    const cliff = POS_CLIFFS[pos];
+    if (severity === 'fire') {
+      return `Sell <strong>now</strong> — past the ${pos} dynasty cliff (age ${cliff}). The market still prices their tape; in 12–18 months that window closes.`;
+    }
+    const yr = cliff - age;
+    return `Sell within <strong>${yr} year${yr > 1 ? 's' : ''}</strong> — before the age ${cliff} cliff. A strong season is your ideal selling moment.`;
+  }
+
+  function getTradeProfile(pos, severity) {
+    const profiles = {
+      fire: {
+        RB: 'Championship-window contenders who need a RB1 now. Avoid rebuilders — they see the age and will lowball.',
+        WR: 'Win-now teams with a young RB or TE surplus willing to trade positional depth for a proven producer.',
+        TE: 'Contenders that lost a TE to injury or have a glaring need. Urgency creates a price premium.',
+        QB: 'Two-QB or SF leagues where QBs are scarce. Any team with backup QB concerns is a buyer.',
+      },
+      warn: {
+        RB: 'Any competing team looking for a proven RB1. Frame this as a win-now asset — don\'t mention age.',
+        WR: 'Teams with a clear WR need in the top 6. Lead with their track record and current production.',
+        TE: 'Contenders without a locked-in TE starter. Good TE value is scarce enough they\'ll pay a premium.',
+        QB: 'SF or 2QB leagues with a young, unproven QB1. Trade them stability at the position.',
+      },
+    };
+    return (profiles[severity] && profiles[severity][pos]) || 'Target teams in win-now mode with depth to move.';
+  }
+
+  const players = (my.players || []).filter(p => POS_CLIFFS[p.pos]);
+  const ecrLookup = INTEL.ecr || {};
+
+  const flagged = players.map(p => {
+    const key = normalizeName(p.name);
+    const ecr = ecrLookup[key] || {};
+    const age = p.age || ecr.age || null;
+    const dynRank = (FC_VALUES && FC_VALUES[p.id]) ? FC_VALUES[p.id].rank : (ecr.rank || null);
+    const severity = getSeverity(p.pos, age, dynRank);
+    if (!severity) return null;
+    return {
+      ...p, age, dynRank,
+      projRank: getProjectedRank(p.pos, age, dynRank),
+      severity,
+      comp: getComparable(p.pos, age),
+      sellWindow: getSellWindow(p.pos, age, severity),
+      tradeProfile: getTradeProfile(p.pos, severity),
+    };
+  }).filter(Boolean).sort((a, b) => {
+    const s = { fire: 0, warn: 1 };
+    return s[a.severity] !== s[b.severity] ? s[a.severity] - s[b.severity] : (a.dynRank||999) - (b.dynRank||999);
+  });
+
+  if (!flagged.length) return '';
+
+  const fireCount = flagged.filter(f => f.severity === 'fire').length;
+  const warnCount = flagged.filter(f => f.severity === 'warn').length;
+  const summaryParts = [];
+  if (fireCount) summaryParts.push(`${fireCount} sell-now`);
+  if (warnCount) summaryParts.push(`${warnCount} watch`);
+
+  const sevColor  = s => s === 'fire' ? '#ef4444' : '#f59e0b';
+  const sevBg     = s => s === 'fire' ? 'rgba(239,68,68,.08)' : 'rgba(245,158,11,.08)';
+  const sevBorder = s => s === 'fire' ? 'rgba(239,68,68,.25)' : 'rgba(245,158,11,.25)';
+  const sevIcon   = s => s === 'fire' ? '🔥' : '⚠️';
+  const sevLabel  = s => s === 'fire' ? 'SELL NOW' : 'WATCH';
+
+  return `<div style="margin-bottom:20px">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px">
+      🔥 Age Curve Risk Flags — ${summaryParts.join(', ')}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${flagged.map(f => `
+      <div style="background:${sevBg(f.severity)};border:1px solid ${sevBorder(f.severity)};border-radius:12px;padding:14px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+          <div>
+            <span style="font-weight:700;font-size:14px;color:var(--text)">${f.name}</span>
+            <span style="color:var(--muted);font-size:12px;margin-left:8px">${f.pos} · Age ${f.age ?? '?'} · ${f.team || ''}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            ${f.dynRank ? `<span style="font-size:11px;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:6px;padding:2px 7px">Dynasty #${f.dynRank}</span>` : ''}
+            <span style="font-size:11px;font-weight:700;color:${sevColor(f.severity)};background:${sevBg(f.severity)};border:1px solid ${sevBorder(f.severity)};border-radius:6px;padding:3px 9px">${sevIcon(f.severity)} ${sevLabel(f.severity)}</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div style="background:var(--card);border-radius:8px;padding:10px 12px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Sell Window</div>
+            <div style="font-size:12px;color:var(--text);line-height:1.45">${f.sellWindow}</div>
+          </div>
+          <div style="background:var(--card);border-radius:8px;padding:10px 12px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Value Trajectory</div>
+            <div style="font-size:12px;color:var(--text);line-height:1.45">
+              ${f.dynRank
+                ? `<span>Dynasty #${f.dynRank} <span style="color:var(--muted)">→</span> <strong style="color:${sevColor(f.severity)}">~#${f.projRank ?? '?'}</strong> in 2 yrs</span>`
+                : `<span style="color:var(--muted)">Load FC values for trajectory</span>`}
+            </div>
+          </div>
+          <div style="background:var(--card);border-radius:8px;padding:10px 12px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Trade Target Profile</div>
+            <div style="font-size:12px;color:var(--text);line-height:1.45">${f.tradeProfile}</div>
+          </div>
+          <div style="background:var(--card);border-radius:8px;padding:10px 12px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Comparable Aging Curve</div>
+            <div style="font-size:12px;color:var(--text);line-height:1.45">
+              ${f.comp ? `<strong>${f.comp.player}</strong> — ${f.comp.note}` : '<span style="color:var(--muted)">No close historical comparable.</span>'}
+            </div>
+          </div>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
 function renderGMDashHome() {
   const my      = S.teams.find(t => t.isMyTeam);
   const league  = _curLeague();
@@ -3368,6 +3525,9 @@ function renderGMDashHome() {
         ${sellerAlerts.join('')}
       </div>` : '';
     })() : ''}
+
+    <!-- Age Curve Risk Flags -->
+    ${renderAgeCurveFlags(my)}
 
     <!-- GM Briefing card -->
     ${renderGMBriefingCard(my, league, scoutedTeams)}

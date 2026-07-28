@@ -260,6 +260,7 @@ def _norm_players(raw):
         name = p.get('player_name') or p.get('player') or p.get('name') or ''
         if not name:
             continue
+        age_raw = p.get('player_age')
         out.append({
             'rank':       p.get('rank_ecr') or p.get('rank') or (i + 1),
             'rankBest':   p.get('rank_best'),
@@ -268,6 +269,7 @@ def _norm_players(raw):
             'name':  name,
             'team':  p.get('player_team_id') or p.get('team') or '',
             'pos':   p.get('player_position_id') or p.get('pos') or '',
+            'age':   int(age_raw) if age_raw is not None else None,
         })
     return out
 
