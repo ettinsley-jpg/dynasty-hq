@@ -5041,6 +5041,20 @@ function renderCoachesOffice() {
     </div>
   </div>`;
 
+  // Auto-fire start/sit analysis once per matchup week load
+  if (coachView === 'matchup' && matchup && hasProj) {
+    const fireKey = `startSitFired_w${week}`;
+    if (!U[fireKey]) {
+      U[fireKey] = true;
+      U.coachChatHistory = [];
+      setTimeout(() => sendAgentMessage(
+        'coach', null, 'coachChatHistory', 'coachChatThinking',
+        `Give me my complete Week ${week} start/sit breakdown. Go through every starter slot and every bench player — who's locked in, who's a close call, and who I should sit. Flag any injury news and tell me the 1-2 toughest decisions I need to make.`,
+        buildStartSitSystemPrompt()
+      ), 50);
+    }
+  }
+
   const maxRows = Math.max(mySlots.length, oppSlots.length);
   const matchupRows = Array.from({length: maxRows}, (_,i) => {
     const myS  = mySlots[i]  || { label:(oppSlots[i]||{}).label||'BN', player:null };
@@ -9763,6 +9777,93 @@ Personality: You see things others miss. You think 2-3 years ahead. You protect 
   return personas[role] || personas.assistant;
 }
 
+function buildStartSitSystemPrompt() {
+  const base    = buildStaffSystemPrompt('coach');
+  const my      = S.teams?.find(t => t.isMyTeam);
+  const league  = _curLeague();
+  const week    = INTEL.intelWeek;
+  const matchup = INTEL.coachMatchup;
+  if (!my || !matchup) return base;
+
+  const rp = league?.leagueRules?.rosterPositions;
+  const hasFCData = !!(FC_VALUES && Object.keys(FC_VALUES).length > 0);
+
+  function getProj(id) {
+    const rawId = String(id).replace('sl_','');
+    const p = (INTEL.projections||{})[rawId];
+    return (p && p.ppr > 0) ? p.ppr : null;
+  }
+
+  function buildLineupSimple(players) {
+    const active = players.filter(p => p.slot === 'active' || !p.slot);
+    const slots  = [];
+    const used   = new Set();
+    const positions = ['QB','RB','WR','TE','K','DEF'];
+    const rpArr  = rp || ['QB','RB','RB','WR','WR','WR','TE','FLEX','BN','BN','BN','BN','BN','BN'];
+    const counts = {};
+    let flex = 0, sf = 0;
+    rpArr.forEach(s => {
+      if (['BN','IR','TAXI'].includes(s)) return;
+      if (['FLEX','WR,RB,TE','RB,WR,TE','WRT'].includes(s)) { flex++; return; }
+      if (['SUPER_FLEX','QB,WR,RB,TE'].includes(s)) { sf++; return; }
+      counts[s] = (counts[s]||0) + 1;
+    });
+    const byPos = {};
+    positions.forEach(pos => {
+      byPos[pos] = active.filter(p => p.pos === pos).sort((a,b) => {
+        const va = hasFCData?((FC_VALUES[a.id]||{}).value||0):0;
+        const vb = hasFCData?((FC_VALUES[b.id]||{}).value||0):0;
+        return vb-va;
+      });
+    });
+    positions.forEach(pos => {
+      const n = counts[pos]||0;
+      const pool = (byPos[pos]||[]).filter(p => !used.has(p.id));
+      for (let i=0;i<n;i++) { const p=pool[i]||null; if(p) used.add(p.id); slots.push({label:pos,player:p}); }
+    });
+    const flexPool = [...(byPos.RB||[]),...(byPos.WR||[]),...(byPos.TE||[])].filter(p=>!used.has(p.id));
+    for (let i=0;i<flex;i++) { const p=flexPool[i]||null; if(p) used.add(p.id); slots.push({label:'FLEX',player:p}); }
+    const sfPool = [...(byPos.QB||[]),...flexPool].filter(p=>!used.has(p.id));
+    for (let i=0;i<sf;i++) { const p=sfPool[i]||null; if(p) used.add(p.id); slots.push({label:'SF',player:p}); }
+    const bench = active.filter(p => !used.has(p.id));
+    return { slots, bench };
+  }
+
+  function newsFor(name) {
+    if (!INTEL.news?.length) return '';
+    const key  = normalizeName(name);
+    const item = INTEL.news.find(n => n.playerKey === key);
+    if (!item?.headline) return '';
+    return ` | News: ${item.headline.slice(0,80)}`;
+  }
+
+  const { slots, bench } = buildLineupSimple(my.players||[]);
+
+  const starterLines = slots.map(({label, player}) => {
+    if (!player) return `  ${label}: [EMPTY]`;
+    const proj = getProj(player.id);
+    return `  ${label}: ${player.name} (${player.pos}, Age ${player.age||'?'}) — Proj: ${proj!=null?proj.toFixed(1)+'pts':'N/A'}${newsFor(player.name)}`;
+  }).join('\n');
+
+  const benchLines = bench.map(p => {
+    const proj = getProj(p.id);
+    return `  ${p.name} (${p.pos}, Age ${p.age||'?'}) — Proj: ${proj!=null?proj.toFixed(1)+'pts':'N/A'}${newsFor(p.name)}`;
+  }).join('\n');
+
+  return `${base}
+
+== WEEK ${week} MATCHUP CONTEXT ==
+Opponent: ${matchup.oppTeamName}
+
+MY STARTERS:
+${starterLines}
+
+MY BENCH:
+${benchLines || '  (none)'}
+
+Your job: Give a clear, decisive Week ${week} start/sit breakdown. Go position-by-position through the roster. For each player, give one line: locked in, strong start, close call, or sit — and a brief reason. Flag any injury news. Highlight the 1-2 toughest lineup decisions. Be direct. No hedging.`;
+}
+
 function buildTfv2GmSystemPrompt() {
   const my     = S.teams?.find(t => t.isMyTeam);
   const league = _curLeague();
@@ -9904,11 +10005,16 @@ function _renderEmbeddedChat(history, thinking, bgColor, borderColor) {
   return msgs + typingDots;
 }
 
-async function sendAgentMessage(role, inputId, historyKey, thinkingKey) {
-  const el  = document.getElementById(inputId);
-  const msg = (el?.value || '').trim();
-  if (!msg) return;
-  el.value = '';
+async function sendAgentMessage(role, inputId, historyKey, thinkingKey, directMsg, systemPromptOverride) {
+  let msg;
+  if (directMsg) {
+    msg = directMsg;
+  } else {
+    const el = document.getElementById(inputId);
+    msg = (el?.value || '').trim();
+    if (!msg) return;
+    if (el) el.value = '';
+  }
 
   U[historyKey] = [...(U[historyKey] || []), { side:'user', text: msg }];
   U[thinkingKey] = true;
@@ -9929,7 +10035,8 @@ async function sendAgentMessage(role, inputId, historyKey, thinkingKey) {
   try {
     const history  = (U[historyKey] || []).slice(0, -1);
     const messages = buildClaudeMessages(history, msg);
-    const reply    = await callClaudeAPI(buildStaffSystemPrompt(role), messages);
+    const systemPrompt = systemPromptOverride || buildStaffSystemPrompt(role);
+    const reply    = await callClaudeAPI(systemPrompt, messages);
     U[historyKey]  = [...(U[historyKey] || []), { side:'staff', text: reply }];
     U[thinkingKey] = false;
     render();
