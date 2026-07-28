@@ -844,7 +844,7 @@ async function loadECR() {
     // Primary: local proxy → Netlify function fallback
     const ecrParams = `type=${INTEL.intelType}&scoring=${INTEL.intelScoring}`;
     let ecrData = null;
-    for (const url of [`http://localhost:3001/ecr?${ecrParams}`, `/.netlify/functions/ecr?${ecrParams}`]) {
+    for (const url of [`http://localhost:3001/ecr?${ecrParams}`, `/api/ecr?${ecrParams}`]) {
       try {
         const res = await fetch(url);
         if (!res.ok) continue;
@@ -859,7 +859,7 @@ async function loadECR() {
     // Stored separately so fringe players not in ECR still appear in trend boards
     const addMap = {}, dropMap = {};
     try {
-      for (const url of ['http://localhost:3001/trending', '/.netlify/functions/trending']) {
+      for (const url of ['http://localhost:3001/trending', '/api/trending']) {
         try {
           const res = await fetch(url);
           if (!res.ok) continue;
@@ -961,7 +961,7 @@ async function loadNews() {
   if (INTEL.newsLoading) return;
   INTEL.newsLoading = true; render();
   try {
-    const res = await fetch('http://localhost:3001/news');
+    const res = await fetch('http://localhost:3001/news').catch(() => fetch('/api/news'));
     if (res.ok) {
       const json = await res.json();
       INTEL.news = json.items || [];
@@ -4102,7 +4102,7 @@ function generateFollowUpScript(userMsg, history, allTeams) {
 async function _fetchProjections(week, year) {
   // 1. Netlify function (works when app served from Netlify)
   try {
-    const res = await fetch(`/.netlify/functions/projections?source=sleeper&week=${week}&year=${year}`);
+    const res = await fetch(`/api/projections?source=sleeper&week=${week}&year=${year}`);
     if (res.ok) {
       const json = await res.json();
       if (json && json.data && Object.keys(json.data).length > 0) return json;
@@ -9256,7 +9256,7 @@ async function callClaudeAPI(systemPrompt, messages) {
   };
 
   // Try local proxy first, then Netlify function
-  const endpoints = ['http://localhost:3001/claude', '/.netlify/functions/claude'];
+  const endpoints = ['http://localhost:3001/claude', '/api/claude'];
   let lastErr;
   for (const url of endpoints) {
     try {
