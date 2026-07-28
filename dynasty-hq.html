@@ -3400,6 +3400,8 @@ function renderAgeCurveFlags(my) {
           <div style="display:flex;align-items:center;gap:6px">
             ${f.dynRank ? `<span style="font-size:11px;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:6px;padding:2px 7px">Dynasty #${f.dynRank}</span>` : ''}
             <span style="font-size:11px;font-weight:700;color:${sevColor(f.severity)};background:${sevBg(f.severity)};border:1px solid ${sevBorder(f.severity)};border-radius:6px;padding:3px 9px">${sevIcon(f.severity)} ${sevLabel(f.severity)}</span>
+            <button data-act="age-curve-trade" data-pid="${f.id}" data-name="${esc(f.name)}" data-pos="${esc(f.pos)}" data-value="${FC_VALUES&&FC_VALUES[f.id]?FC_VALUES[f.id].value||0:0}" data-age="${f.age||0}"
+              style="font-size:11px;font-weight:700;color:#000;background:var(--gold);border:none;border-radius:6px;padding:3px 9px;cursor:pointer;white-space:nowrap">Find Trade →</button>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -7309,6 +7311,15 @@ document.addEventListener('click', e => {
 
     case 'tfv2-mode':
       U.tfv2Mode = btn.dataset.val; render(); break;
+
+    case 'age-curve-trade': {
+      const p = { id:btn.dataset.pid, name:btn.dataset.name, pos:btn.dataset.pos, value:parseInt(btn.dataset.value)||0, age:parseInt(btn.dataset.age)||0 };
+      U.tfv2Mode  = 'offer';
+      U.tfv2Offer = [p];
+      U.tab       = 'trades';
+      U.tradeTab  = 'tradefind';
+      render(); break;
+    }
 
     case 'tfv2-offer-toggle': {
       const p = { id:btn.dataset.pid, name:btn.dataset.name, pos:btn.dataset.pos, value:parseInt(btn.dataset.value)||0, age:parseInt(btn.dataset.age)||0 };
