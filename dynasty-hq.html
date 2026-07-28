@@ -3783,6 +3783,7 @@ function renderGMScanner() {
       <span style="width:8px;height:8px;background:#22c55e;border-radius:50%;display:inline-block"></span>
       FantasyCalc dynasty values loaded · ${Object.keys(FC_VALUES).length} players ranked
     </div>`}
+    ${renderPickAcquisitionTracker(my)}
     ${renderTeamNeedMatrix(my)}
     ${renderMarketScanner(my)}
   </div>`;
@@ -6443,6 +6444,199 @@ function renderTradeAdvisor(my) {
   `;
 }
 
+function renderPickAcquisitionTracker(my) {
+  const allTeams  = S.teams.filter(t => !t.isMyTeam);
+  const hasFCData = !!(FC_VALUES && Object.keys(FC_VALUES).length > 0);
+  const positions = ['QB','RB','WR','TE'];
+  const STARTERS  = { QB:2, RB:3, WR:4, TE:1 };
+
+  if (allTeams.length < 2) return '';
+
+  const leagueAvgs = {};
+  positions.forEach(pos => { leagueAvgs[pos] = leaguePosValueAvg(S.teams, pos, STARTERS[pos]); });
+
+  // My surplus positions (where my value > league avg by >15%)
+  const mySurplus = hasFCData ? positions.filter(pos => {
+    const prof = teamPosProfile(my, pos, STARTERS[pos]);
+    const avg  = leagueAvgs[pos].avgTotal;
+    return avg > 0 && prof.totalValue / avg > 1.15;
+  }) : [];
+
+  // My need positions (where my value < league avg by >15%)
+  const myNeeds = hasFCData ? positions.filter(pos => {
+    const prof = teamPosProfile(my, pos, STARTERS[pos]);
+    const avg  = leagueAvgs[pos].avgTotal;
+    return avg > 0 && prof.totalValue / avg < 0.85;
+  }) : [];
+
+  // Score each opponent team
+  const teamScores = allTeams.map(t => {
+    const wins   = t.wins   ?? null;
+    const losses = t.losses ?? null;
+    const played = (wins ?? 0) + (losses ?? 0) + (t.ties ?? 0);
+    const winPct = played > 0 ? (wins ?? 0) / played : null;
+
+    // Win-now teams (above .500) want to SELL picks for players → you BUY their picks
+    // Rebuilding teams (below .500) want to SELL players for picks → you SELL to them
+    const isWinNow   = winPct !== null && winPct > 0.5;
+    const isRebuilding = winPct !== null && winPct <= 0.5;
+    const mode = isWinNow ? 'buy-picks' : isRebuilding ? 'sell-picks' : 'unknown';
+
+    // Avg age of active roster
+    const active = (t.players||[]).filter(p => p.slot==='active'||!p.slot);
+    const avgAge = active.length > 0
+      ? Math.round(active.reduce((s,p) => s+(p.age||0), 0) / active.length * 10) / 10
+      : null;
+    const isVeteran = avgAge !== null && avgAge >= 27;
+
+    // Their positional needs that match MY surplus
+    const matchingSurplus = hasFCData ? mySurplus.filter(pos => {
+      const prof = teamPosProfile(t, pos, STARTERS[pos]);
+      const avg  = leagueAvgs[pos].avgTotal;
+      return avg > 0 && prof.totalValue / avg < 0.85;
+    }) : [];
+
+    // Their positional surplus that matches MY needs (for sell mode)
+    const matchingNeeds = hasFCData ? myNeeds.filter(pos => {
+      const prof = teamPosProfile(t, pos, STARTERS[pos]);
+      const avg  = leagueAvgs[pos].avgTotal;
+      return avg > 0 && prof.totalValue / avg > 1.15;
+    }) : [];
+
+    // Pick capital
+    const picks = t.picks || [];
+    const pickCount = picks.length;
+    const pickVal   = picks.reduce((sum, pk) => {
+      const y = parseInt(pk.year||pk.season||0);
+      const r = parseInt(pk.round||1);
+      const match = DYNASTY_PICKS.find(dp => dp.year===y && dp.round===r);
+      return sum + (match ? match.value : (r===1?2000:r===2?600:300));
+    }, 0);
+    const avgLeaguePickVal = S.teams.reduce((s, tm) => {
+      return s + (tm.picks||[]).reduce((ps,pk) => {
+        const y=parseInt(pk.year||pk.season||0), r=parseInt(pk.round||1);
+        const m=DYNASTY_PICKS.find(dp=>dp.year===y&&dp.round===r);
+        return ps+(m?m.value:(r===1?2000:r===2?600:300));
+      },0);
+    },0) / (S.teams.length||1);
+    const highPickCapital = pickVal > avgLeaguePickVal * 1.25;
+
+    // Signal count for sorting
+    let signals = 0;
+    if (winPct !== null) signals++;
+    if (isVeteran) signals++;
+    if (mode === 'buy-picks' && matchingSurplus.length > 0) signals++;
+    if (mode === 'sell-picks' && matchingNeeds.length > 0) signals++;
+    if (highPickCapital && mode === 'buy-picks') signals++;
+
+    // Best player to offer for buy-picks (my surplus pos, top FC value)
+    const offerPlayer = mySurplus.length > 0 ? (() => {
+      const pool = mySurplus.flatMap(pos =>
+        (my.players||[]).filter(p => (p.slot==='active'||!p.slot) && p.pos===pos)
+          .map(p => ({...p, fcVal:(FC_VALUES&&FC_VALUES[p.id]||{}).value||0}))
+      ).sort((a,b) => b.fcVal - a.fcVal);
+      return pool[0] || null;
+    })() : null;
+
+    return { team:t, mode, winPct, wins, losses, played, avgAge, isVeteran,
+             matchingSurplus, matchingNeeds, pickCount, pickVal, highPickCapital,
+             signals, offerPlayer };
+  }).filter(t => t.mode !== 'unknown' || t.highPickCapital);
+
+  const buyPicksTeams  = teamScores.filter(t => t.mode === 'buy-picks').sort((a,b) => b.signals-a.signals);
+  const sellPicksTeams = teamScores.filter(t => t.mode === 'sell-picks').sort((a,b) => b.signals-a.signals);
+
+  const showTracker = U.pickTrackerOpen !== false;
+
+  function teamCard(ts) {
+    const { team, mode, wins, losses, played, avgAge, isVeteran,
+            matchingSurplus, matchingNeeds, pickCount, pickVal, highPickCapital, offerPlayer } = ts;
+    const isBuyPicks = mode === 'buy-picks';
+    const badgeColor = isBuyPicks ? '#86efac' : '#fca5a5';
+    const badgeBg    = isBuyPicks ? 'rgba(34,197,94,.15)' : 'rgba(239,68,68,.15)';
+    const badgeBorder= isBuyPicks ? 'rgba(34,197,94,.35)' : 'rgba(239,68,68,.35)';
+    const badgeLabel = isBuyPicks ? '📈 Sell Their Picks' : '📉 Buy Their Players';
+    const recordStr  = played > 0 ? `${wins??0}-${losses??0}` : 'No record';
+    const modeNote   = isBuyPicks
+      ? 'Win-now team likely to trade picks for proven players'
+      : 'Rebuilding team likely to trade veterans for picks';
+
+    const surplusMatchEl = matchingSurplus.length
+      ? `<div style="font-size:11px;color:#86efac;margin-top:4px">✓ They need your ${matchingSurplus.join(', ')} — position fit</div>`
+      : '';
+    const needsMatchEl = matchingNeeds.length
+      ? `<div style="font-size:11px;color:#86efac;margin-top:4px">✓ They have ${matchingNeeds.join(', ')} you need</div>`
+      : '';
+    const pickEl = pickCount > 0
+      ? `<div style="font-size:11px;color:${highPickCapital?'#fde68a':'var(--muted)'};margin-top:4px">
+          ${highPickCapital?'⭐':'🎯'} ${pickCount} pick${pickCount!==1?'s':''} on hand${pickVal>0?' (~'+Math.round(pickVal/1000)+'k val)':''}</div>`
+      : `<div style="font-size:11px;color:var(--muted);margin-top:4px">No picks on record — may hold undisclosed future picks</div>`;
+    const ageEl = avgAge
+      ? `<div style="font-size:11px;color:${isVeteran?'#fca5a5':'var(--muted)'};margin-top:4px">${isVeteran?'⚠️ Veteran-heavy':'👤'} Avg age ${avgAge}</div>`
+      : '';
+
+    // Find Trade button data
+    const tradePlayer = isBuyPicks ? offerPlayer : null;
+
+    return `<div class="card" style="padding:14px 16px;margin-bottom:10px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">
+        <div>
+          <div style="font-weight:700;font-size:14px">${esc(team.name)}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${recordStr}${played>0?` · ${mode==='buy-picks'?'Above':'Below'} .500`:''}</div>
+        </div>
+        <div style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;background:${badgeBg};border:1px solid ${badgeBorder};color:${badgeColor};white-space:nowrap;flex-shrink:0">${badgeLabel}</div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);font-style:italic;margin-bottom:6px">${modeNote}</div>
+      ${surplusMatchEl}${needsMatchEl}${ageEl}${pickEl}
+      ${tradePlayer ? `<button class="btn btn-gold" style="width:100%;font-size:12px;margin-top:10px"
+        data-act="pick-tracker-trade"
+        data-offer-id="${esc(tradePlayer.id)}" data-offer-name="${esc(tradePlayer.name)}"
+        data-offer-pos="${esc(tradePlayer.pos)}" data-offer-val="${tradePlayer.fcVal||0}"
+        data-team-id="${esc(team.id)}">
+        Find Trade → ${esc(team.name)}
+      </button>` : `<button class="btn btn-sm" style="width:100%;font-size:12px;margin-top:10px"
+        data-act="pick-tracker-trade"
+        data-offer-id="" data-offer-name="" data-offer-pos="" data-offer-val="0"
+        data-team-id="${esc(team.id)}">
+        Open Trade Finder → ${esc(team.name)}
+      </button>`}
+    </div>`;
+  }
+
+  const sectionLabel = (label, sublabel, color) => `
+    <div style="display:flex;align-items:center;gap:8px;margin:12px 0 8px">
+      <div style="font-size:12px;font-weight:700;color:${color}">${label}</div>
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+      <div style="font-size:10px;color:var(--muted)">${sublabel}</div>
+    </div>`;
+
+  return `
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+    <div>
+      <div style="font-size:13px;font-weight:700">📡 Pick Acquisition Tracker</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">Win-now teams selling picks · Rebuilders selling players</div>
+    </div>
+    <button class="btn btn-sm" data-act="toggle-pick-tracker" style="font-size:11px">
+      ${showTracker ? '▲ Collapse' : '▼ Expand'}
+    </button>
+  </div>
+
+  ${showTracker ? `
+    ${buyPicksTeams.length ? sectionLabel('📈 These teams will trade picks for players', buyPicksTeams.length+' win-now', '#86efac') : ''}
+    ${buyPicksTeams.map(teamCard).join('')}
+    ${sellPicksTeams.length ? sectionLabel('📉 These teams will trade players for picks', sellPicksTeams.length+' rebuilding', '#fca5a5') : ''}
+    ${sellPicksTeams.map(teamCard).join('')}
+    ${!buyPicksTeams.length && !sellPicksTeams.length ? `<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">
+      No standings data yet — re-import your league or load matchup data to populate records.
+    </div>` : ''}
+  ` : ''}
+
+  <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px;margin-bottom:8px">
+    <div style="font-size:13px;font-weight:700;margin-bottom:2px">Team Need Matrix</div>
+    <div style="font-size:11px;color:var(--muted)">Two-sided trade fits by positional value depth</div>
+  </div>`;
+}
+
 function renderTeamNeedMatrix(my) {
   const allTeams  = S.teams;
   const hasFCData = !!(FC_VALUES && Object.keys(FC_VALUES).length > 0);
@@ -7763,6 +7957,20 @@ document.addEventListener('click', e => {
     case 'toggle-buy-low':
       U.buyLowOpen = !(U.buyLowOpen !== false); render(); break;
 
+    case 'toggle-pick-tracker':
+      U.pickTrackerOpen = !(U.pickTrackerOpen !== false); render(); break;
+
+    case 'pick-tracker-trade': {
+      const offerId = btn.dataset.offerId;
+      U.tfv2Mode  = 'offer';
+      U.tfv2Offer = offerId ? [{ id:offerId, name:btn.dataset.offerName, pos:btn.dataset.offerPos, value:parseInt(btn.dataset.offerVal)||0 }] : [];
+      U.tfv2Want  = [];
+      U.tfv2Team  = btn.dataset.teamId || null;
+      U.tab       = 'trades';
+      U.tradeTab  = 'tradefind';
+      render(); break;
+    }
+
     case 'toggle-need-matrix-targets':
       U.needMatrixTargets = !U.needMatrixTargets; render(); break;
 
@@ -8842,7 +9050,10 @@ async function doSleeperImportSelected() {
           return {id:'sl_'+pid, name, pos:mappedPos, age:p.age||0, rank:p.search_rank||9999, slot, injuryStatus, team:p.team||null};
         }).filter(Boolean);
         players.sort((a,b) => a.rank - b.rank);
-        return {id:'sl_'+r.roster_id, name, isMyTeam, players};
+        const wins   = r.settings?.wins   ?? null;
+        const losses = r.settings?.losses ?? null;
+        const ties   = r.settings?.ties   ?? 0;
+        return {id:'sl_'+r.roster_id, name, isMyTeam, players, wins, losses, ties};
       });
 
       const myTeam = newTeams.find(t => t.isMyTeam);
