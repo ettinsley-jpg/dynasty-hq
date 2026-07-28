@@ -6522,7 +6522,7 @@ function renderTeamNeedMatrix(my) {
     });
     const score = iGive.length + iWant.length;
     return { opp, iGive, iWant, score };
-  }).filter(t => t.score >= 2).sort((a,b) => b.score - a.score) : [];
+  }).filter(t => t.iGive.length > 0 && t.iWant.length > 0).sort((a,b) => b.score - a.score) : [];
 
   // Generate trade target cards HTML
   const showTargets = U.needMatrixTargets;
