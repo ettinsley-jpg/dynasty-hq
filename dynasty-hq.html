@@ -2729,18 +2729,6 @@ function renderGMBriefingCard(my, league, scoutedTeams) {
       </div>
     </div>
 
-    <!-- Ask input -->
-    <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:rgba(0,0,0,.1)">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Ask ${esc(gmFirst)}</span>
-        ${_aiStatusBadge()}
-      </div>
-      <input id="gm-msg-input" placeholder="Trade targets, roster questions, what to do next…"
-        style="width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:13px;box-sizing:border-box"
-        data-act="gm-msg-input">
-      ${_renderEmbeddedChat(U.gmChatHistory, U.gmChatThinking, 'rgba(245,158,11,.07)', 'rgba(245,158,11,.15)')}
-    </div>
-
     <!-- Briefing items -->
     <div style="padding:0 16px">
       ${briefItems}
@@ -3722,6 +3710,23 @@ function renderGMDashHome() {
         ${sellerAlerts.join('')}
       </div>` : '';
     })() : ''}
+
+    <!-- GM Chat (directly below Market Intel) -->
+    ${(() => {
+      const hired  = curStaff().hired || {};
+      const gm     = hired.gm;
+      const gmFirst = gm ? gm.firstName : 'Marcus';
+      return `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Ask ${esc(gmFirst)}</span>
+          ${_aiStatusBadge()}
+        </div>
+        <input id="gm-msg-input" placeholder="Trade targets, roster questions, what to do next…"
+          style="width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:13px;box-sizing:border-box"
+          data-act="gm-msg-input">
+        ${_renderEmbeddedChat(U.gmChatHistory, U.gmChatThinking, 'rgba(245,158,11,.07)', 'rgba(245,158,11,.15)')}
+      </div>`;
+    })()}
 
     <!-- Age Curve Risk Flags -->
     ${renderAgeCurveFlags(my)}
