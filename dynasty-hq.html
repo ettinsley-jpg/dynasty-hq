@@ -3472,6 +3472,186 @@ function renderAgeCurveFlags(my) {
   </div>`;
 }
 
+function renderTradeValueTimeline(my) {
+  if (!FC_VALUES || !Object.keys(FC_VALUES).length) {
+    return `<div style="text-align:center;padding:32px 20px;color:var(--muted);font-size:13px">
+      Load FantasyCalc dynasty values to power this tool.
+    </div>`;
+  }
+
+  // Prime windows: [primeStart, primeEnd, cliffAge]
+  const PRIME = { QB:[26,32,35], RB:[22,26,29], WR:[24,28,31], TE:[25,29,32] };
+
+  const allPlayers = S.teams.flatMap(t => (t.players||[]).map(p => ({...p, teamId:t.id, teamName:t.name, isMyTeam:t.isMyTeam})));
+
+  const enrich = p => {
+    const fc    = FC_VALUES[p.id] || {};
+    const value = fc.value || 0;
+    const rank  = fc.rank  || 999;
+    const trend = fc.trend || 0;  // positive = rising, negative = falling
+    const age   = p.age   || 0;
+    const pos   = p.pos;
+    const [ps, pe, cliff] = PRIME[pos] || [24, 30, 33];
+
+    // Where are they on the arc?
+    let phase, phasePct;
+    if (!age) { phase = 'unknown'; phasePct = 0.5; }
+    else if (age < ps)         { phase = 'pre-prime';  phasePct = Math.max(0, (age - (ps-4)) / 4); }
+    else if (age <= pe)        { phase = 'prime';      phasePct = (age - ps) / (pe - ps); }
+    else if (age <= cliff)     { phase = 'post-prime'; phasePct = (age - pe) / (cliff - pe); }
+    else                       { phase = 'decline';    phasePct = Math.min(1, (age - cliff) / 4); }
+
+    // Years until/since prime peak
+    const yearsFromPeak = age - pe;
+
+    // Trend label: FC trend is typically a number (value change)
+    const trendDir = trend > 200 ? 'rising' : trend < -200 ? 'falling' : 'flat';
+
+    // Signal
+    let signal, signalColor, signalBg, signalReason;
+    if (phase === 'decline' || (phase === 'post-prime' && trendDir === 'falling')) {
+      signal = 'SELL'; signalColor = '#fca5a5'; signalBg = 'rgba(239,68,68,.12)';
+      signalReason = phase === 'decline'
+        ? `Age ${age} — past the cliff for ${pos}. Value likely to continue falling.`
+        : `Post-prime and trending down. Maximize return before value erodes further.`;
+    } else if (phase === 'post-prime' && trendDir !== 'falling') {
+      signal = 'SELL HIGH'; signalColor = '#fdba74'; signalBg = 'rgba(251,146,60,.12)';
+      signalReason = `Past prime window but still holding value. Window to sell is now before trend turns.`;
+    } else if (phase === 'prime' && phasePct > 0.65 && trendDir === 'falling') {
+      signal = 'SELL HIGH'; signalColor = '#fdba74'; signalBg = 'rgba(251,146,60,.12)';
+      signalReason = `In late prime and declining. Sell while value is near its peak.`;
+    } else if (phase === 'pre-prime' && trendDir === 'rising') {
+      signal = 'BUY'; signalColor = '#86efac'; signalBg = 'rgba(34,197,94,.12)';
+      signalReason = `Pre-prime with rising momentum. Buy window before value climbs further.`;
+    } else if (phase === 'prime' && phasePct < 0.4 && trendDir === 'rising') {
+      signal = 'BUY'; signalColor = '#86efac'; signalBg = 'rgba(34,197,94,.12)';
+      signalReason = `Early prime and trending up. Still room to buy before peak value.`;
+    } else {
+      signal = 'HOLD'; signalColor = '#93c5fd'; signalBg = 'rgba(59,130,246,.1)';
+      signalReason = phase === 'prime'
+        ? `In prime window. Hold unless you can get peak value in a trade.`
+        : `Pre-prime with stable trend. Hold and let value develop.`;
+    }
+
+    return { ...p, fc, value, rank, trend, trendDir, age, pos, phase, phasePct, yearsFromPeak, signal, signalColor, signalBg, signalReason, ps, pe, cliff };
+  };
+
+  const query   = (U.tvlSearch || '').toLowerCase().trim();
+  const showAll = U.tvlShowAll || false;
+
+  // Base pool: my roster, filtered by search
+  let pool = (my ? (my.players||[]) : [])
+    .filter(p => ['QB','RB','WR','TE'].includes(p.pos))
+    .map(enrich)
+    .filter(p => p.value > 0);
+
+  // Search override — look across all teams
+  let searchResults = [];
+  if (query.length >= 2) {
+    searchResults = allPlayers
+      .filter(p => ['QB','RB','WR','TE'].includes(p.pos) && normalizeName(p.name||'').includes(normalizeName(query)))
+      .map(enrich)
+      .filter(p => p.value > 0)
+      .slice(0, 12);
+  }
+
+  const display = query.length >= 2 ? searchResults : pool;
+
+  // Sort: SELL first, then SELL HIGH, HOLD, BUY — within each group by value desc
+  const ORDER = { 'SELL':0, 'SELL HIGH':1, 'HOLD':2, 'BUY':3 };
+  display.sort((a,b) => (ORDER[a.signal]??4) - (ORDER[b.signal]??4) || b.value - a.value);
+
+  function arcBar(p) {
+    // Arc spans from primeStart-4 to cliff+2, total range
+    const lo    = p.ps - 4;
+    const hi    = p.cliff + 2;
+    const total = hi - lo;
+    const agePct   = Math.max(0, Math.min(1, (p.age - lo) / total)) * 100;
+    const prePct   = Math.max(0, (p.ps - lo) / total) * 100;
+    const primePct = Math.max(0, (p.pe - lo) / total) * 100;
+    const cliffPct = Math.max(0, (p.cliff - lo) / total) * 100;
+
+    return `<div style="position:relative;height:8px;border-radius:4px;background:var(--bg2);overflow:visible;margin:8px 0 4px">
+      <!-- pre-prime zone -->
+      <div style="position:absolute;left:0;top:0;height:100%;width:${prePct}%;background:rgba(148,163,184,.25);border-radius:4px 0 0 4px"></div>
+      <!-- prime zone -->
+      <div style="position:absolute;left:${prePct}%;top:0;height:100%;width:${primePct-prePct}%;background:rgba(34,197,94,.3)"></div>
+      <!-- post-prime zone -->
+      <div style="position:absolute;left:${primePct}%;top:0;height:100%;width:${cliffPct-primePct}%;background:rgba(251,146,60,.3)"></div>
+      <!-- decline zone -->
+      <div style="position:absolute;left:${cliffPct}%;top:0;height:100%;width:${100-cliffPct}%;background:rgba(239,68,68,.25);border-radius:0 4px 4px 0"></div>
+      <!-- current position dot -->
+      <div style="position:absolute;top:50%;left:${agePct}%;transform:translate(-50%,-50%);width:12px;height:12px;border-radius:50%;background:${p.signalColor};border:2px solid var(--bg);box-shadow:0 0 0 2px ${p.signalColor}40;z-index:1"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted)">
+      <span>Pre-prime</span><span style="color:#86efac30">Prime</span><span style="color:#fdba7440">Post</span><span>Cliff</span>
+    </div>`;
+  }
+
+  function playerCard(p) {
+    const trendArrow = p.trendDir==='rising' ? '↑' : p.trendDir==='falling' ? '↓' : '→';
+    const trendCol   = p.trendDir==='rising' ? '#86efac' : p.trendDir==='falling' ? '#fca5a5' : 'var(--muted)';
+    const ownerLine  = !p.isMyTeam && p.teamName ? `<span style="font-size:10px;color:var(--muted)"> · ${esc(p.teamName)}</span>` : '';
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px">
+        <div>
+          <span style="font-weight:700;font-size:14px">${esc(p.name)}</span>
+          <span style="font-size:11px;color:var(--muted);margin-left:6px">${p.pos} · Age ${p.age||'?'}</span>
+          ${ownerLine}
+        </div>
+        <div style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;background:${p.signalBg};color:${p.signalColor};white-space:nowrap;flex-shrink:0">${p.signal}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+        <div><span style="font-size:18px;font-weight:900;color:var(--gold)">${p.value.toLocaleString()}</span><span style="font-size:10px;color:var(--muted);margin-left:4px">FC value</span></div>
+        <div style="font-size:13px;color:${trendCol};font-weight:700">${trendArrow} ${Math.abs(p.trend||0) > 50 ? Math.round(Math.abs(p.trend)/10)*10+' pts' : 'flat'}</div>
+        <div style="font-size:11px;color:var(--muted)">Rank #${p.rank}</div>
+      </div>
+      ${arcBar(p)}
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5">${p.signalReason}</div>
+    </div>`;
+  }
+
+  const groups = ['SELL','SELL HIGH','HOLD','BUY'];
+  const groupLabels = {
+    'SELL':      { label:'🔴 Sell Now',      sub:'Past prime or in sharp decline — maximize return' },
+    'SELL HIGH': { label:'🟠 Sell High',     sub:'Near or past peak — sell before value drops' },
+    'HOLD':      { label:'🔵 Hold',          sub:'In prime window or stable trend' },
+    'BUY':       { label:'🟢 Buy Window',    sub:'Pre-prime or rising momentum — buy before price climbs' },
+  };
+
+  const grouped = groups.map(sig => {
+    const cards = display.filter(p => p.signal === sig);
+    if (!cards.length) return '';
+    const { label, sub } = groupLabels[sig];
+    return `<div style="margin-bottom:4px">
+      <div style="display:flex;align-items:center;gap:8px;margin:12px 0 8px">
+        <div style="font-size:12px;font-weight:700">${label}</div>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+        <div style="font-size:10px;color:var(--muted)">${cards.length} player${cards.length!==1?'s':''}</div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:8px">${sub}</div>
+      ${cards.map(playerCard).join('')}
+    </div>`;
+  }).join('');
+
+  const emptyMsg = query.length >= 2 && !searchResults.length
+    ? `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">No players found matching "${esc(query)}"</div>`
+    : !display.length
+    ? `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Import your league to see your roster here.</div>`
+    : '';
+
+  return `
+    <div style="margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:2px">📊 Trade Value Timeline</div>
+      <div style="font-size:11px;color:var(--muted)">Age curve position + trend momentum → Buy / Hold / Sell signals</div>
+    </div>
+    <input id="tvl-search" placeholder="Search any player…"
+      style="width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:13px;box-sizing:border-box;margin-bottom:14px"
+      value="${esc(U.tvlSearch||'')}" data-act="tvl-search">
+    ${emptyMsg || grouped}
+  `;
+}
+
 function renderBuyLowRadar(my) {
   if (!my || !FC_VALUES || !INTEL.ecr || !Object.keys(INTEL.ecr).length) return '';
 
@@ -3767,7 +3947,7 @@ function renderGMScanner() {
     { id:'agecurve',  label:'📉 Age Curve Flags',           sub:'Roster aging risk alerts' },
     { id:'buylow',    label:'📈 Buy-Low Radar',             sub:'Value vs. production gaps' },
     { id:'picktrack', label:'📡 Pick Acquisition',          sub:'Win-now & rebuild targets' },
-    { id:'timeline',  label:'📊 Trade Value Timeline',      sub:'Coming soon' },
+    { id:'timeline',  label:'📊 Trade Value Timeline',      sub:'Buy / Hold / Sell signals' },
     { id:'rental',    label:'🔄 Rental vs. Asset Alerts',   sub:'Coming soon' },
   ];
 
@@ -3803,10 +3983,12 @@ function renderGMScanner() {
     content = renderBuyLowRadar(my);
   } else if (activeTab === 'picktrack') {
     content = renderPickAcquisitionTracker(my) + renderTeamNeedMatrix(my);
+  } else if (activeTab === 'timeline') {
+    content = renderTradeValueTimeline(my);
   } else {
     content = `<div style="text-align:center;padding:48px 20px;color:var(--muted)">
-      <div style="font-size:32px;margin-bottom:12px">${activeTab==='timeline'?'📊':'🔄'}</div>
-      <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px">${activeTab==='timeline'?'Trade Value Timeline':'Rental vs. Asset Alerts'}</div>
+      <div style="font-size:32px;margin-bottom:12px">🔄</div>
+      <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px">Rental vs. Asset Alerts</div>
       <div style="font-size:13px">Coming soon — this tool is under construction.</div>
     </div>`;
   }
@@ -7995,6 +8177,8 @@ document.addEventListener('click', e => {
       if (btn.dataset.val === 'picktrack') U.needMatrixTargets = true;
       render(); break;
 
+    case 'tvl-search': break; // handled via input event
+
     case 'toggle-pick-tracker':
       U.pickTrackerOpen = !(U.pickTrackerOpen !== false); render(); break;
 
@@ -8723,6 +8907,13 @@ document.addEventListener('input', e => {
   if (e.target.id === 'intel-search') {
     U.intelSearch = e.target.value;
     render();
+  }
+  if (e.target.id === 'tvl-search') {
+    U.tvlSearch = e.target.value;
+    const el = document.getElementById('tvl-search');
+    render();
+    const el2 = document.getElementById('tvl-search');
+    if (el2) { el2.focus(); el2.setSelectionRange(el2.value.length, el2.value.length); }
   }
   if (e.target.id === 'trade-get-search') {
     U.tradeGetSearch = e.target.value;
