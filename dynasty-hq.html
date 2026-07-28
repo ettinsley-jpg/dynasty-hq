@@ -2357,6 +2357,89 @@ function renderRosterCompliancePanel(league, myTeam) {
   </div>`;
 }
 
+// ── Scout's Film Notes ────────────────────────────────────────────────────────
+const FILM_NOTE_TAGS = [
+  { id:'buy',   label:'Buy',   color:'#86efac', bg:'rgba(34,197,94,.15)',   border:'rgba(34,197,94,.35)'  },
+  { id:'watch', label:'Watch', color:'#93c5fd', bg:'rgba(59,130,246,.12)',  border:'rgba(59,130,246,.3)'  },
+  { id:'sell',  label:'Sell',  color:'#fdba74', bg:'rgba(251,146,60,.15)',  border:'rgba(251,146,60,.35)' },
+  { id:'avoid', label:'Avoid', color:'#fca5a5', bg:'rgba(239,68,68,.15)',   border:'rgba(239,68,68,.35)'  },
+];
+
+function _filmNoteKey() { return CURRENT_LEAGUE_ID || 'default'; }
+
+function getFilmNote(playerId) {
+  const league = _curLeague();
+  return (league?.filmNotes || {})[playerId] || null;
+}
+
+function saveFilmNote(playerId, tag, text) {
+  const league = _curLeague();
+  if (!league) return;
+  if (!league.filmNotes) league.filmNotes = {};
+  if (!tag && !text) { delete league.filmNotes[playerId]; }
+  else { league.filmNotes[playerId] = { tag, text: text.trim(), ts: Date.now() }; }
+  try { localStorage.setItem(LEAGUES_KEY, JSON.stringify(LEAGUES)); } catch(e) {}
+}
+
+function filmNoteChip(playerId) {
+  const note = getFilmNote(playerId);
+  if (!note) return '';
+  const tagDef = FILM_NOTE_TAGS.find(t => t.id === note.tag) || FILM_NOTE_TAGS[1];
+  const preview = note.text ? ` · ${note.text.slice(0,24)}${note.text.length>24?'…':''}` : '';
+  return `<span data-act="open-film-note" data-pid="${esc(playerId)}"
+    style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;
+      padding:1px 6px;border-radius:4px;cursor:pointer;margin-left:5px;
+      background:${tagDef.bg};color:${tagDef.color};border:1px solid ${tagDef.border}">
+    📝 ${tagDef.label}${esc(preview)}
+  </span>`;
+}
+
+function filmNoteBtnSmall(playerId, playerName) {
+  const note = getFilmNote(playerId);
+  return `<button data-act="open-film-note" data-pid="${esc(playerId)}" data-pname="${esc(playerName)}"
+    style="padding:2px 6px;border-radius:5px;font-size:10px;cursor:pointer;border:1px solid var(--border);
+      background:${note ? 'rgba(245,158,11,.12)' : 'var(--card)'};color:${note ? '#f59e0b' : 'var(--muted)'};white-space:nowrap">
+    📝${note ? ' Noted' : ''}
+  </button>`;
+}
+
+function renderFilmNoteModal() {
+  if (U.modal !== 'filmnote') return '';
+  const { pid, pname } = U.filmNoteTarget || {};
+  if (!pid) return '';
+  const note = getFilmNote(pid) || { tag: 'watch', text: '' };
+  const tagDef = FILM_NOTE_TAGS.find(t => t.id === note.tag) || FILM_NOTE_TAGS[1];
+  const tagBtns = FILM_NOTE_TAGS.map(t => `
+    <button data-act="fn-tag" data-val="${t.id}"
+      style="flex:1;padding:7px 4px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid ${note.tag===t.id?t.border:'var(--border)'};
+        background:${note.tag===t.id?t.bg:'var(--card)'};color:${note.tag===t.id?t.color:'var(--muted)'}">
+      ${t.label}
+    </button>`).join('');
+  return `<div class="overlay" id="modal-overlay">
+    <div class="modal" style="max-width:360px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div>
+          <div class="modal-title" style="margin-bottom:2px">📝 Film Note</div>
+          <div style="font-size:12px;color:var(--muted)">${esc(pname || 'Player')}</div>
+        </div>
+        <button data-act="close-modal" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:12px">${tagBtns}</div>
+      <div class="fg">
+        <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em">Notes</label>
+        <textarea id="fn-text" rows="3" placeholder="What you're seeing on tape, context, trade ideas…"
+          style="width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px;resize:vertical;box-sizing:border-box;margin-top:4px">${esc(note.text||'')}</textarea>
+      </div>
+      <div class="modal-footer" style="margin-top:12px">
+        ${getFilmNote(pid) ? `<button class="btn btn-danger btn-sm" data-act="fn-delete">Delete</button>` : ''}
+        <button class="btn btn-outline" data-act="close-modal">Cancel</button>
+        <button class="btn btn-gold" data-act="fn-save">Save Note</button>
+      </div>
+    </div>
+  </div>`;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function playerRow(pl, idx, total, teamId, pos, canDelete) {
   const key = esc(teamId + '_' + pos);
   const si  = slotInfo(idx, pos);
@@ -2370,7 +2453,7 @@ function playerRow(pl, idx, total, teamId, pos, canDelete) {
       <span class="pr-rank">${idx+1}</span>
       <div class="pr-avatar pr-avatar-${esc(pos)}">${pl.name.split(' ').map(w=>w[0]||'').slice(0,2).join('').toUpperCase()}</div>
       <div class="pr-info">
-        <div class="pr-name">${esc(pl.name)}</div>
+        <div class="pr-name">${esc(pl.name)}${filmNoteChip(pl.id)}</div>
         <div class="pr-meta">${meta} · <span class="sl ${si.cls}">${si.text}</span></div>
       </div>
       <div class="pr-right">
@@ -3608,6 +3691,7 @@ function renderTradeValueTimeline(my) {
       </div>
       ${arcBar(p)}
       <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5">${p.signalReason}</div>
+      <div style="margin-top:8px">${filmNoteBtnSmall(p.id, p.name)}</div>
     </div>`;
   }
 
@@ -3757,6 +3841,7 @@ function renderRentalAssetAlerts(my) {
         data-act="rental-find-trade"
         data-offer-id="${esc(p.id)}" data-offer-name="${esc(p.name)}"
         data-offer-pos="${esc(p.pos)}" data-offer-val="${p.value}">Find Trade</button>` : '';
+      const noteBtn = isMe ? filmNoteBtnSmall(p.id, p.name) : '';
       return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
         <div style="flex:1;min-width:0">
           <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div>
@@ -3767,6 +3852,7 @@ function renderRentalAssetAlerts(my) {
           <div style="font-size:10px;color:var(--muted)">${urgencyBar(p.urgency)}</div>
         </div>
         ${findTrade}
+        ${noteBtn}
       </div>`;
     }).join('');
 
@@ -7694,6 +7780,7 @@ function renderImport() {
 }
 
 function renderModal() {
+  if (U.modal === 'filmnote') return renderFilmNoteModal();
   if (U.modal !== 'addplayer') return '';
   return `<div class="overlay" id="modal-overlay">
     <div class="modal">
@@ -8329,6 +8416,44 @@ document.addEventListener('click', e => {
       render(); break;
 
     case 'tvl-search': break; // handled via input event
+
+    case 'open-film-note':
+      U.modal = 'filmnote';
+      U.filmNoteTarget = { pid: btn.dataset.pid, pname: btn.dataset.pname || btn.dataset.pid };
+      render(); break;
+
+    case 'fn-tag': {
+      if (!U.filmNoteTarget) break;
+      const note = getFilmNote(U.filmNoteTarget.pid) || {};
+      note.tag = btn.dataset.val;
+      if (!U.filmNoteDraft) U.filmNoteDraft = {};
+      U.filmNoteDraft.tag = btn.dataset.val;
+      // Re-render modal only — preserve textarea value
+      const textEl = document.getElementById('fn-text');
+      const curText = textEl ? textEl.value : (note.text || '');
+      U.filmNoteDraft.text = curText;
+      render();
+      const newTextEl = document.getElementById('fn-text');
+      if (newTextEl) { newTextEl.value = curText; newTextEl.setSelectionRange(newTextEl.value.length, newTextEl.value.length); }
+      break;
+    }
+
+    case 'fn-save': {
+      if (!U.filmNoteTarget) break;
+      const textEl = document.getElementById('fn-text');
+      const text = textEl ? textEl.value : '';
+      const tag = (U.filmNoteDraft && U.filmNoteDraft.tag) || getFilmNote(U.filmNoteTarget.pid)?.tag || 'watch';
+      saveFilmNote(U.filmNoteTarget.pid, tag, text);
+      U.modal = null; U.filmNoteTarget = null; U.filmNoteDraft = null;
+      render(); break;
+    }
+
+    case 'fn-delete': {
+      if (!U.filmNoteTarget) break;
+      saveFilmNote(U.filmNoteTarget.pid, null, null);
+      U.modal = null; U.filmNoteTarget = null; U.filmNoteDraft = null;
+      render(); break;
+    }
 
     case 'rental-filter':
       U.rentalFilter = btn.dataset.val; render(); break;
