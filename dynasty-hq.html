@@ -3696,8 +3696,8 @@ function renderRentalAssetAlerts(my) {
   }
 
   function teamProfile(team) {
-    const lineup = buildLineup(team.players || [], null);
-    const starters = lineup.slots.map(s => s.player).filter(p => p && ['QB','RB','WR','TE'].includes(p.pos));
+    const starters = (team.players || [])
+      .filter(p => (p.slot === 'active' || !p.slot) && ['QB','RB','WR','TE'].includes(p.pos));
     const classified = starters.map(classifyPlayer).filter(Boolean);
 
     const rentals    = classified.filter(p => p.type === 'rental');
