@@ -3783,6 +3783,7 @@ function renderGMScanner() {
       <span style="width:8px;height:8px;background:#22c55e;border-radius:50%;display:inline-block"></span>
       FantasyCalc dynasty values loaded · ${Object.keys(FC_VALUES).length} players ranked
     </div>`}
+    ${renderTeamNeedMatrix(my)}
     ${renderMarketScanner(my)}
   </div>`;
 }
@@ -6442,6 +6443,204 @@ function renderTradeAdvisor(my) {
   `;
 }
 
+function renderTeamNeedMatrix(my) {
+  const allTeams  = S.teams;
+  const hasFCData = !!(FC_VALUES && Object.keys(FC_VALUES).length > 0);
+  const positions = ['QB','RB','WR','TE'];
+  const STARTERS  = { QB:2, RB:3, WR:4, TE:1 };
+  const NORM      = { QB:3.5, RB:6, WR:9, TE:2.5 };
+
+  if (allTeams.length < 2) return '';
+  if (!hasFCData) return `<div style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#fde68a">
+    Load Dynasty Values to power the Team Need Matrix.</div>`;
+
+  // Compute league averages
+  const leagueAvgs = {};
+  positions.forEach(pos => { leagueAvgs[pos] = leaguePosValueAvg(allTeams, pos, STARTERS[pos]); });
+
+  // Pick capital: sum DYNASTY_PICKS values from team.picks (by round/year)
+  function pickCapital(team) {
+    const picks = team.picks || [];
+    if (!picks.length) return 0;
+    return picks.reduce((sum, pk) => {
+      // match pick to DYNASTY_PICKS by year+round
+      const y = parseInt(pk.year||pk.season||0);
+      const r = parseInt(pk.round||1);
+      const match = DYNASTY_PICKS.find(dp => dp.year === y && dp.round === r);
+      return sum + (match ? match.value : (r===1?2000:r===2?600:300));
+    }, 0);
+  }
+  const pickVals   = allTeams.map(t => pickCapital(t));
+  const avgPickVal = pickVals.reduce((s,v) => s+v, 0) / (allTeams.length||1);
+
+  // Classify each cell: surplus | balanced | need
+  function classify(valueRatio) {
+    if (valueRatio > 1.18) return 'surplus';
+    if (valueRatio < 0.82) return 'need';
+    return 'balanced';
+  }
+  function pickClass(val) {
+    if (!avgPickVal) return 'balanced';
+    const r = val / avgPickVal;
+    if (r > 1.18) return 'surplus';
+    if (r < 0.82) return 'need';
+    return 'balanced';
+  }
+
+  const cellStyle = {
+    surplus:  { bg:'rgba(34,197,94,.18)',  color:'#86efac', dot:'🟢', label:'Surplus' },
+    balanced: { bg:'rgba(255,255,255,.04)', color:'var(--muted)', dot:'⚪', label:'OK' },
+    need:     { bg:'rgba(239,68,68,.16)',   color:'#fca5a5', dot:'🔴', label:'Need' },
+  };
+
+  // Build row data — my team first, then opponents sorted by name
+  const myRow   = allTeams.find(t => t.isMyTeam);
+  const others  = allTeams.filter(t => !t.isMyTeam).sort((a,b) => a.name.localeCompare(b.name));
+  const ordered = myRow ? [myRow, ...others] : others;
+
+  const rowData = ordered.map(t => {
+    const posData = {};
+    positions.forEach(pos => {
+      const prof = teamPosProfile(t, pos, STARTERS[pos]);
+      const avg  = leagueAvgs[pos];
+      const ratio = avg.avgTotal > 0 ? prof.totalValue / avg.avgTotal : 1;
+      posData[pos] = { ratio, totalValue: prof.totalValue, cls: classify(ratio), players: prof.players };
+    });
+    const pickVal = pickCapital(t);
+    return { team:t, isMe:t.isMyTeam, posData, pickVal, pickCls: pickClass(pickVal) };
+  });
+
+  // Find two-sided trade opportunities (my surplus ↔ their need, their surplus ↔ my need)
+  const myData = rowData.find(r => r.isMe);
+  const tradeTargets = myData ? rowData.filter(r => !r.isMe).map(opp => {
+    const iGive = [], iWant = [];
+    [...positions, 'Picks'].forEach(pos => {
+      const myC   = pos === 'Picks' ? myData.pickCls  : myData.posData[pos]?.cls;
+      const oppC  = pos === 'Picks' ? opp.pickCls     : opp.posData[pos]?.cls;
+      if (myC === 'surplus' && oppC === 'need')     iGive.push(pos);
+      if (myC === 'need'    && oppC === 'surplus')  iWant.push(pos);
+    });
+    const score = iGive.length + iWant.length;
+    return { opp, iGive, iWant, score };
+  }).filter(t => t.score >= 2).sort((a,b) => b.score - a.score) : [];
+
+  // Generate trade target cards HTML
+  const showTargets = U.needMatrixTargets;
+  const targetCards = showTargets && tradeTargets.length ? tradeTargets.map(({ opp, iGive, iWant }) => {
+    const givePos  = iGive.filter(p => p !== 'Picks');
+    const wantPos  = iWant.filter(p => p !== 'Picks');
+    const givePicks = iGive.includes('Picks');
+    const wantPicks = iWant.includes('Picks');
+
+    // Best give/want players for Trade Finder pre-load
+    const givePlayers = givePos.flatMap(pos => (myData.posData[pos]?.players||[]).slice(0,2));
+    const wantPlayers = wantPos.flatMap(pos => (opp.posData[pos]?.players||[]).slice(0,2));
+    const offerPid  = givePlayers[0]?.id  || '';
+    const offerName = givePlayers[0]?.name || '';
+    const offerPos  = givePlayers[0]?.pos  || '';
+    const offerVal  = givePlayers[0] ? ((FC_VALUES[givePlayers[0].id]||{}).value||0) : 0;
+    const wantPid   = wantPlayers[0]?.id   || '';
+    const wantName  = wantPlayers[0]?.name  || '';
+    const wantPos2  = wantPlayers[0]?.pos   || '';
+    const wantVal   = wantPlayers[0] ? ((FC_VALUES[wantPlayers[0].id]||{}).value||0) : 0;
+
+    return `<div class="card" style="padding:14px 16px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-weight:700;font-size:14px">${esc(opp.team.name)}</div>
+        <div style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(245,158,11,.15);color:#fde68a;font-weight:700">
+          ${(iGive.length + iWant.length)}-way fit
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:8px;padding:8px 10px">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#86efac;margin-bottom:4px">You can offer</div>
+          ${iGive.map(pos => `<div style="font-size:12px;font-weight:600">🟢 ${pos} surplus</div>`).join('')}
+          ${iGive.length === 0 ? '<div style="font-size:11px;color:var(--muted)">—</div>' : ''}
+        </div>
+        <div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:8px 10px">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#fca5a5;margin-bottom:4px">You need</div>
+          ${iWant.map(pos => `<div style="font-size:12px;font-weight:600">🔴 ${pos} from them</div>`).join('')}
+          ${iWant.length === 0 ? '<div style="font-size:11px;color:var(--muted)">—</div>' : ''}
+        </div>
+      </div>
+      ${offerPid && wantPid ? `<button class="btn btn-gold" style="width:100%;font-size:12px"
+        data-act="need-matrix-trade"
+        data-offer-id="${esc(offerPid)}" data-offer-name="${esc(offerName)}" data-offer-pos="${esc(offerPos)}" data-offer-val="${offerVal}"
+        data-want-id="${esc(wantPid)}" data-want-name="${esc(wantName)}" data-want-pos="${esc(wantPos2)}" data-want-val="${wantVal}"
+        data-team-id="${esc(opp.team.id)}">
+        Find Trade → ${esc(opp.team.name)}
+      </button>` : ''}
+    </div>`;
+  }).join('') : '';
+
+  const noTargets = showTargets && tradeTargets.length === 0
+    ? `<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">No strong two-sided fits found. Your roster may already be well-balanced, or try trading within a single position.</div>`
+    : '';
+
+  return `
+  <div style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+    <div>
+      <div style="font-size:13px;font-weight:700">Team Need Matrix</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">Dynasty value depth vs. league average per position</div>
+    </div>
+    <button class="btn ${showTargets ? 'btn-gold' : 'btn-sm'}" data-act="toggle-need-matrix-targets" style="font-size:12px">
+      ${showTargets ? '✕ Hide Trade Targets' : '🎯 Generate Trade Targets'}
+    </button>
+  </div>
+
+  ${showTargets ? `<div style="margin-bottom:16px">${targetCards}${noTargets}</div>` : ''}
+
+  <div style="overflow-x:auto;margin-bottom:24px">
+  <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:400px">
+    <thead>
+      <tr style="border-bottom:2px solid var(--border)">
+        <th style="text-align:left;padding:8px 10px;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap">Team</th>
+        ${positions.map(pos => `<th style="padding:8px 6px;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.05em;text-align:center">${pos}<br><span style="font-weight:400;opacity:.55">${(leagueAvgs[pos].avgTotal/1000).toFixed(1)}k avg</span></th>`).join('')}
+        <th style="padding:8px 6px;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.05em;text-align:center">Picks</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rowData.map(({ team, isMe, posData, pickVal, pickCls }) => {
+        const cs = isMe ? 'background:rgba(245,158,11,.08);' : '';
+        return `<tr style="border-bottom:1px solid var(--border);${cs}">
+          <td style="padding:7px 10px;font-weight:${isMe?700:500};white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis;color:${isMe?'var(--gold)':'var(--text)'}">
+            ${isMe ? '★ ' : ''}${esc(team.name)}
+          </td>
+          ${positions.map(pos => {
+            const d  = posData[pos];
+            const st = cellStyle[d.cls];
+            const pct = leagueAvgs[pos].avgTotal > 0 ? Math.round((d.ratio - 1) * 100) : 0;
+            return `<td style="padding:5px 6px;text-align:center;background:${st.bg}">
+              <div style="font-size:13px">${st.dot}</div>
+              <div style="font-size:9px;color:${st.color};margin-top:1px;font-variant-numeric:tabular-nums">${pct>0?'+':''}${pct}%</div>
+            </td>`;
+          }).join('')}
+          ${(() => {
+            const st = cellStyle[pickCls];
+            const pct = avgPickVal > 0 ? Math.round((pickVal/avgPickVal - 1)*100) : 0;
+            return `<td style="padding:5px 6px;text-align:center;background:${st.bg}">
+              <div style="font-size:13px">${st.dot}</div>
+              <div style="font-size:9px;color:${st.color};margin-top:1px;font-variant-numeric:tabular-nums">${pct>0?'+':''}${pct}%</div>
+            </td>`;
+          })()}
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>
+  </div>
+  <div style="display:flex;gap:14px;margin-top:-10px;margin-bottom:20px;font-size:11px;flex-wrap:wrap;color:var(--muted)">
+    <span>🟢 Surplus (>+18% vs avg)</span>
+    <span>⚪ Balanced</span>
+    <span>🔴 Need (&lt;-18% vs avg)</span>
+    <span style="opacity:.6">% = team total vs league avg</span>
+  </div>
+
+  <div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:8px">
+    <div style="font-size:13px;font-weight:700;margin-bottom:2px">Market Scanner</div>
+    <div style="font-size:11px;color:var(--muted)">Detailed seller / buyer signals by position</div>
+  </div>`;
+}
+
 function renderMarketScanner(my) {
   const allTeams = S.teams;
   const NORM     = { QB:3.5, RB:6, WR:9, TE:2.5 };
@@ -7608,6 +7807,21 @@ document.addEventListener('click', e => {
 
     case 'toggle-buy-low':
       U.buyLowOpen = !(U.buyLowOpen !== false); render(); break;
+
+    case 'toggle-need-matrix-targets':
+      U.needMatrixTargets = !U.needMatrixTargets; render(); break;
+
+    case 'need-matrix-trade': {
+      const offer = { id:btn.dataset.offerId, name:btn.dataset.offerName, pos:btn.dataset.offerPos, value:parseInt(btn.dataset.offerVal)||0 };
+      const want  = { id:btn.dataset.wantId,  name:btn.dataset.wantName,  pos:btn.dataset.wantPos,  value:parseInt(btn.dataset.wantVal)||0 };
+      U.tfv2Mode  = 'offer';
+      U.tfv2Offer = [offer];
+      U.tfv2Want  = [want];
+      U.tfv2Team  = btn.dataset.teamId || null;
+      U.tab       = 'trades';
+      U.tradeTab  = 'tradefind';
+      render(); break;
+    }
 
     case 'age-curve-want': {
       const p = { id:btn.dataset.pid, name:btn.dataset.name, pos:btn.dataset.pos, value:parseInt(btn.dataset.value)||0, age:parseInt(btn.dataset.age)||0 };
