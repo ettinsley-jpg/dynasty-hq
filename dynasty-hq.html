@@ -5909,7 +5909,7 @@ function renderTradeFinderV2(my) {
     </div>
     <!-- GM Chat -->
     <div style="border-top:1px solid var(--border);padding:12px 14px">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px">💬 Ask Your GM</div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:6px">💬 Ask Your GM ${_aiStatusBadge()}</div>
       ${gmChat.length ? `
       <div style="max-height:220px;overflow-y:auto;margin-bottom:10px">
         ${gmChat.map(m => `<div style="margin-bottom:8px;${m.side==='user'?'text-align:right':''}">
@@ -6101,7 +6101,7 @@ function renderTradeAdvisor(my) {
 
   return `
   <div style="margin-bottom:16px;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:12px">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px">💬 Negotiation Situation</div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px">💬 Negotiation Situation ${_aiStatusBadge()}</div>
     <div style="margin-bottom:10px">
       <label style="display:block;font-size:11px;color:var(--muted);font-weight:700;margin-bottom:4px">WHERE THE TRADE STANDS NOW</label>
       <textarea id="advisor-offer" rows="3" placeholder="e.g. They offered me Jaylen Waddle for my Jalen Hurts straight up. I think Hurts is worth more but Waddle fills a WR need…"
