@@ -1171,7 +1171,7 @@ let FC_VALUES = null; // {[playerId]: {value, rank, posRank, trend, tier}}
 
 async function loadFC() {
   if (FC_VALUES) return FC_VALUES;
-  const CACHE = 'fc_dynasty_v2';
+  const CACHE = 'fc_dynasty_v3';
   try {
     const c = localStorage.getItem(CACHE);
     if (c) {
@@ -1186,14 +1186,19 @@ async function loadFC() {
     raw.forEach(e => {
       if (e.player.sleeperId) {
         map['sl_' + e.player.sleeperId] = {
-          value:   e.value,
-          rank:    e.overallRank,
-          posRank: e.positionRank,
-          trend:   e.trend30Day   || 0,
-          tier:    e.maybeTier    || 5,
-          name:    e.player.name,
-          pos:     e.player.position,
-          age:     e.player.maybeAge || null,
+          value:     e.value,
+          rank:      e.overallRank,
+          posRank:   e.positionRank,
+          trend:     e.trend30Day      || 0,
+          tier:      e.maybeTier       || 5,
+          name:      e.player.name,
+          pos:       e.player.position,
+          age:       e.player.maybeAge || null,
+          team:      e.player.maybeTeam || null,
+          draftYear: e.player.maybeDraftInfo?.year  || null,
+          draftRound:e.player.maybeDraftInfo?.round || null,
+          draftPick: e.player.maybeDraftInfo?.pick  || null,
+          id:        'sl_' + e.player.sleeperId,
         };
       }
     });
@@ -3197,6 +3202,193 @@ function renderWaiverTrendBoard() {
   </div>` : ''}`;
 }
 
+// ── Landing Spot Tracker ─────────────────────────────────────────────────────
+
+const TEAM_QUALITY = {
+  // Offense quality tiers (rough 2025 context) — higher = better landing
+  'KC':4,'DET':4,'PHI':4,'BUF':4,'BAL':4,'SF':4,
+  'CIN':3,'MIA':3,'DAL':3,'LAR':3,'HOU':3,'GB':3,'SEA':3,'NO':3,
+  'MIN':3,'TB':3,'ATL':3,'LV':3,'IND':3,'PIT':3,
+  'NYJ':2,'NE':2,'CHI':2,'TEN':2,'NYG':2,'WAS':2,'JAX':2,'DEN':2,
+  'ARI':2,'CLE':2,'LAC':2,'CAR':1,'CAR':1,
+};
+
+function landingSpotQuality(team) {
+  const q = TEAM_QUALITY[team] || 2;
+  if (q >= 4) return { label:'Elite Situation', color:'#4ade80', bg:'rgba(34,197,94,.12)' };
+  if (q >= 3) return { label:'Good Situation',  color:'#86efac', bg:'rgba(34,197,94,.08)' };
+  if (q >= 2) return { label:'Average',         color:'#fbbf24', bg:'rgba(251,191,36,.1)'  };
+  return               { label:'Tough Spot',     color:'#f87171', bg:'rgba(239,68,68,.1)'   };
+}
+
+function getLandingNote(playerId) {
+  const league = _curLeague();
+  return (league?.landingNotes || {})[playerId] || null;
+}
+
+function saveLandingNote(playerId, preDraftTier, preDraftNote) {
+  const league = _curLeague();
+  if (!league) return;
+  if (!league.landingNotes) league.landingNotes = {};
+  if (preDraftTier || preDraftNote) {
+    league.landingNotes[playerId] = { tier: preDraftTier, note: preDraftNote, savedAt: Date.now() };
+  } else {
+    delete league.landingNotes[playerId];
+  }
+  const idx = LEAGUES.findIndex(l => l.id === CURRENT_LEAGUE_ID);
+  if (idx >= 0) LEAGUES[idx] = league;
+  localStorage.setItem(LEAGUES_KEY, JSON.stringify(LEAGUES));
+}
+
+function renderLandingSpotTracker() {
+  if (!FC_VALUES) return `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 16px;text-align:center;color:var(--muted);font-size:13px;margin-top:16px">Load Dynasty Values to see Landing Spot Tracker.</div>`;
+
+  const curYear = new Date().getFullYear();
+  const filterPos  = U.lstPos  || 'ALL';
+  const filterYear = U.lstYear || String(curYear); // default to current draft class
+  const expandedId = U.lstExpanded || null;
+
+  // Pull rookies from FC_VALUES for the selected draft year
+  const draftYear = parseInt(filterYear);
+  const rookies = Object.values(FC_VALUES)
+    .filter(p => p.draftYear === draftYear && ['QB','RB','WR','TE'].includes(p.pos))
+    .filter(p => filterPos === 'ALL' || p.pos === filterPos)
+    .sort((a, b) => (b.value||0) - (a.value||0));
+
+  if (!rookies.length) {
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 16px;text-align:center;color:var(--muted);font-size:13px;margin-top:16px">No ${filterYear} draft class data found. Make sure dynasty values are loaded.</div>`;
+  }
+
+  const PRE_TIERS = ['Elite','Top 5','Top 10','Top 20','Day 2','Day 3','Sleeper'];
+  const TIER_COLOR = {
+    'Elite':'#fde68a','Top 5':'#86efac','Top 10':'#86efac',
+    'Top 20':'#93c5fd','Day 2':'#93c5fd','Day 3':'#d4d4d4','Sleeper':'#c4b5fd'
+  };
+
+  const POS_COLOR = { QB:'#f472b6', RB:'#4ade80', WR:'#60a5fa', TE:'#fb923c' };
+  const availYears = [String(curYear), String(curYear - 1)].filter(y => {
+    const yr = parseInt(y);
+    return Object.values(FC_VALUES).some(p => p.draftYear === yr);
+  });
+
+  // Year + pos filters
+  const yearBtns = availYears.map(y =>
+    `<button data-act="lst-year" data-val="${y}" style="padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid ${filterYear===y?'rgba(245,158,11,.5)':'var(--border)'};background:${filterYear===y?'rgba(245,158,11,.12)':'var(--card)'};color:${filterYear===y?'#f59e0b':'var(--muted)'}">${y} Class</button>`
+  ).join('');
+
+  const posBtns = ['ALL','QB','RB','WR','TE'].map(p =>
+    `<button data-act="lst-pos" data-val="${p}" style="padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid ${filterPos===p?`${POS_COLOR[p]||'rgba(245,158,11,.5)'}80`:'var(--border)'};background:${filterPos===p?`${POS_COLOR[p]||'#f59e0b'}15`:'var(--card)'};color:${filterPos===p?(POS_COLOR[p]||'#f59e0b'):'var(--muted)'}">${p}</button>`
+  ).join('');
+
+  const cards = rookies.map(p => {
+    const isOpen = expandedId === p.id;
+    const lsq = landingSpotQuality(p.team || '');
+    const note = getLandingNote(p.id);
+    const aiAnalysis = (U.lstAnalysis || {})[p.id];
+    const aiLoading  = (U.lstAnalysisLoading || {})[p.id];
+
+    const preTierChip = note?.tier
+      ? `<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:${TIER_COLOR[note.tier]||'#d4d4d4'}20;color:${TIER_COLOR[note.tier]||'#d4d4d4'};border:1px solid ${TIER_COLOR[note.tier]||'#d4d4d4'}40">Pre: ${note.tier}</span>`
+      : `<span style="font-size:10px;color:var(--muted);padding:1px 6px;border-radius:4px;border:1px dashed var(--border)">No pre-draft take</span>`;
+
+    const posRankBadge = p.posRank ? `#${p.posRank} ${p.pos}` : '';
+
+    const expandedContent = isOpen ? `
+      <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px">
+        <!-- Pre-draft take recorder -->
+        <div style="margin-bottom:12px">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">Your Pre-Draft Assessment</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+            ${PRE_TIERS.map(t => {
+              const active = note?.tier === t;
+              return `<button data-act="lst-pre-tier" data-pid="${p.id}" data-val="${t}"
+                style="padding:3px 8px;border-radius:5px;font-size:11px;font-weight:${active?700:500};cursor:pointer;
+                  border:1px solid ${active?(TIER_COLOR[t]||'#d4d4d4')+'80':'var(--border)'};
+                  background:${active?(TIER_COLOR[t]||'#d4d4d4')+'18':'var(--card)'};
+                  color:${active?(TIER_COLOR[t]||'#d4d4d4'):'var(--muted)'}">${t}</button>`;
+            }).join('')}
+          </div>
+          <textarea id="lst-note-${p.id}" placeholder="What did you think before the pick? Upside, concerns, dynasty ceiling…"
+            style="width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:12px;box-sizing:border-box;resize:vertical;min-height:60px;font-family:inherit">${esc(note?.note||'')}</textarea>
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <button data-act="lst-save-note" data-pid="${p.id}" class="btn btn-gold" style="font-size:11px;padding:5px 12px">Save Assessment</button>
+            ${note ? `<button data-act="lst-clear-note" data-pid="${p.id}" class="btn btn-outline btn-sm" style="font-size:11px">Clear</button>` : ''}
+          </div>
+        </div>
+        <!-- Landing spot AI analysis -->
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Landing Spot Analysis</div>
+            <button data-act="lst-analyze" data-pid="${p.id}" data-pname="${esc(p.name)}" data-pos="${p.pos}" data-team="${p.team||''}" data-round="${p.draftRound||''}" data-pick="${p.draftPick||''}"
+              class="btn btn-outline btn-sm" style="font-size:11px">
+              ${aiLoading ? '⏳ Analyzing…' : aiAnalysis ? '🔄 Refresh' : '✨ Analyze Landing Spot'}
+            </button>
+          </div>
+          ${aiLoading
+            ? `<div style="font-size:12px;color:var(--muted);padding:8px 0">Analyzing ${esc(p.name)}'s situation with ${esc(p.team||'their team')}…</div>`
+            : aiAnalysis
+              ? `<div style="font-size:12px;color:var(--text);line-height:1.6;background:rgba(255,255,255,.03);border-radius:8px;padding:10px 12px;border:1px solid var(--border)">${esc(aiAnalysis)}</div>`
+              : `<div style="font-size:12px;color:var(--muted);padding:8px 0">Hit Analyze to get an AI breakdown of ${esc(p.name)}'s path to relevance, depth chart situation, and dynasty impact.</div>`
+          }
+        </div>
+      </div>` : '';
+
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px">
+      <div style="display:flex;align-items:flex-start;gap:10px;cursor:pointer" data-act="lst-expand" data-pid="${p.id}">
+        <div style="flex-shrink:0;width:30px;height:30px;border-radius:6px;background:${POS_COLOR[p.pos]||'var(--bg2)'}20;border:1px solid ${POS_COLOR[p.pos]||'var(--border)'}40;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:${POS_COLOR[p.pos]||'var(--muted)'}">${esc(p.pos)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span style="font-weight:700;font-size:13px">${esc(p.name)}</span>
+            ${preTierChip}
+            ${filmNoteChip(p.id)}
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-weight:600;color:${lsq.color};background:${lsq.bg};padding:1px 6px;border-radius:4px;font-size:10px">${p.team||'?'} · ${lsq.label}</span>
+            ${p.draftRound ? `<span>Rd${p.draftRound} Pk${p.draftPick}</span>` : ''}
+            ${posRankBadge ? `<span>${posRankBadge}</span>` : ''}
+            <span style="color:var(--gold);font-weight:600">FC: ${p.value||'—'}</span>
+          </div>
+        </div>
+        <div style="flex-shrink:0;font-size:12px;color:var(--muted)">${isOpen ? '▲' : '▼'}</div>
+      </div>
+      ${expandedContent}
+    </div>`;
+  }).join('');
+
+  return `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-top:16px">
+    <div style="margin-bottom:12px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:2px">📍 Landing Spot Tracker</div>
+      <div style="font-size:11px;color:var(--muted)">Record your pre-draft take — then see how the landing spot changed the dynasty outlook</div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+      ${yearBtns}
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+      ${posBtns}
+    </div>
+    ${cards || `<div style="color:var(--muted);font-size:13px;padding:12px 0">No ${filterPos} rookies found for ${filterYear}.</div>`}
+  </div>`;
+}
+
+async function analyzeLandingSpot(pid, pname, pos, team, round, pick) {
+  U.lstAnalysisLoading = { ...(U.lstAnalysisLoading||{}), [pid]: true };
+  render();
+
+  const systemPrompt = `You are a dynasty fantasy football analyst. Give a concise landing spot analysis for a NFL rookie.
+Cover: (1) depth chart situation and path to immediate targets/carries, (2) offensive system fit and supporting cast, (3) dynasty upside — is this a boom or a bust landing spot? Be direct and opinionated. 3-4 sentences max.`;
+
+  const msg = `Analyze the dynasty landing spot for ${pname} (${pos}), drafted in Round ${round} Pick ${pick} by the ${team}. Focus on their path to fantasy relevance and dynasty value impact.`;
+
+  try {
+    const reply = await callClaudeAPI(systemPrompt, [{ role:'user', content: msg }], 512);
+    U.lstAnalysis = { ...(U.lstAnalysis||{}), [pid]: reply };
+  } catch(e) {
+    U.lstAnalysis = { ...(U.lstAnalysis||{}), [pid]: 'Analysis failed. Try again.' };
+  }
+  U.lstAnalysisLoading = { ...(U.lstAnalysisLoading||{}), [pid]: false };
+  render();
+}
+
 function renderDraftBoard() {
   const board    = U.draftBoard || null;   // { ts, classes: { '2026': [...], '2027': [...] } }
   const loading  = U.draftBoardLoading || false;
@@ -3518,6 +3710,7 @@ function renderScouting() {
     </div>
 
     ${scoutMode === 'draftroom' ? `
+      ${renderLandingSpotTracker()}
       ${renderDraftBoard()}
     ` : `
       ${renderWaiverTrendBoard()}
@@ -8815,6 +9008,48 @@ document.addEventListener('click', e => {
 
     case 'scout-mode':
       U.scoutMode = btn.dataset.val; render(); break;
+
+    case 'lst-year':
+      U.lstYear = btn.dataset.val; U.lstExpanded = null; render(); break;
+
+    case 'lst-pos':
+      U.lstPos = btn.dataset.val; U.lstExpanded = null; render(); break;
+
+    case 'lst-expand': {
+      const pid = btn.dataset.pid;
+      U.lstExpanded = U.lstExpanded === pid ? null : pid;
+      render(); break;
+    }
+
+    case 'lst-pre-tier': {
+      const pid  = btn.dataset.pid;
+      const tier = btn.dataset.val;
+      const existing = getLandingNote(pid) || {};
+      // Toggle off if already selected
+      const newTier = existing.tier === tier ? null : tier;
+      saveLandingNote(pid, newTier, existing.note || '');
+      render(); break;
+    }
+
+    case 'lst-save-note': {
+      const pid  = btn.dataset.pid;
+      const ta   = document.getElementById('lst-note-' + pid);
+      const text = ta ? ta.value.trim() : '';
+      const existing = getLandingNote(pid) || {};
+      saveLandingNote(pid, existing.tier || null, text);
+      render(); break;
+    }
+
+    case 'lst-clear-note':
+      saveLandingNote(btn.dataset.pid, null, '');
+      render(); break;
+
+    case 'lst-analyze':
+      analyzeLandingSpot(
+        btn.dataset.pid, btn.dataset.pname,
+        btn.dataset.pos,  btn.dataset.team,
+        btn.dataset.round, btn.dataset.pick
+      ); break;
 
     case 'draft-board-year':
       U.draftBoardYear = btn.dataset.val; render(); break;
