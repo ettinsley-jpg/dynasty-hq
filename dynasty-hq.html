@@ -5729,7 +5729,38 @@ async function loadCoachMatchups() {
   }
 
   INTEL.coachLoading = false;
+  INTEL.matchupUpdatedAt = Date.now();
   render();
+}
+
+// ── Live score auto-refresh ──────────────────────────────────────────────────
+let _liveRefreshTimer = null;
+
+function isGameWindow() {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun,1=Mon,...,4=Thu,5=Fri,6=Sat
+  const h   = now.getHours();
+  // Thu 19–24, Sun 12–24, Mon 19–24 (all ET approximations)
+  if (day === 4 && h >= 19) return true;
+  if (day === 0 && h >= 12) return true;
+  if (day === 1 && h >= 19) return true;
+  return false;
+}
+
+function startLiveRefresh() {
+  if (_liveRefreshTimer) return; // already running
+  if (!isGameWindow()) return;
+  _liveRefreshTimer = setInterval(() => {
+    if (U.coachView === 'matchup' && U.tab === 'coach') {
+      loadCoachMatchups();
+    } else {
+      stopLiveRefresh();
+    }
+  }, 60000); // every 60 seconds
+}
+
+function stopLiveRefresh() {
+  if (_liveRefreshTimer) { clearInterval(_liveRefreshTimer); _liveRefreshTimer = null; }
 }
 
 async function loadSeasonSchedule() {
@@ -6095,8 +6126,17 @@ function renderCoachesOffice() {
       }
       return (matchup.oppStarters||[]).reduce((s, pid) => s + (getProj('sl_'+pid) || 0), 0);
     })();
-    const label = liveActive ? 'Live' : 'Projected';
-    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 20px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+    const updatedAt = INTEL.matchupUpdatedAt
+      ? new Date(INTEL.matchupUpdatedAt).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
+      : null;
+    const liveLabel = liveActive
+      ? `<div style="display:flex;align-items:center;gap:5px">
+          <span style="width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;animation:pulse-dot 1.5s ease-in-out infinite"></span>
+          <span style="font-size:10px;font-weight:700;color:#22c55e;letter-spacing:.06em">LIVE</span>
+          ${updatedAt ? `<span style="font-size:9px;color:var(--muted)">· ${updatedAt}</span>` : ''}
+        </div>`
+      : `<div style="font-size:9px;color:var(--muted)">${updatedAt ? `Updated ${updatedAt}` : '📊 Projected'}</div>`;
+    return `<div style="background:var(--card);border:1px solid ${liveActive?'rgba(34,197,94,.25)':'var(--border)'};border-radius:10px;padding:14px 20px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:8px">
       <div style="text-align:left;min-width:90px">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(my.name)}</div>
         <div style="font-size:30px;font-weight:900;color:${myDisp>=oppDisp?'#86efac':'var(--text)'};line-height:1">${myDisp > 0 ? myDisp.toFixed(2) : '—'}</div>
@@ -6105,7 +6145,7 @@ function renderCoachesOffice() {
       <div style="text-align:center;flex-shrink:0">
         <div style="font-size:11px;font-weight:700;color:var(--muted)">WEEK ${week}</div>
         <div style="font-size:13px;font-weight:700;color:var(--muted);margin-top:2px">VS</div>
-        <div style="font-size:9px;color:var(--muted);margin-top:3px">📊 ${label}</div>
+        <div style="margin-top:4px;display:flex;justify-content:center">${liveLabel}</div>
       </div>
       <div style="text-align:right;min-width:90px">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(matchup.oppTeamName)}</div>
@@ -9349,6 +9389,8 @@ document.addEventListener('click', e => {
         const lg = _curLeague();
         if (lg?.sleeperLeagueId) { trackActivity('lineupLoads'); loadCoachMatchups(); }
       }
+      if (v === 'matchup') startLiveRefresh();
+      else stopLiveRefresh();
       render(); break;
     }
 
