@@ -668,7 +668,7 @@ function emptyLeagueState() {
   return {
     gmRankings:{}, gmAssessments:{},
     settings:{superflex:false, idp:false, idpFlex:false},
-    teams: JSON.parse(JSON.stringify(SAMPLE_TEAMS)),
+    teams: [],
     myRankings:{}, myAssessment:{},
   };
 }
@@ -676,29 +676,38 @@ function emptyLeagueState() {
 function loadLeagues() {
   try {
     const raw = localStorage.getItem(LEAGUES_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Strip any leagues that are still carrying SAMPLE_TEAMS (name matches and no real sleeper data)
+      const real = parsed.filter(l => l.sleeperLeagueId || l.fbUrl || (l.teams && l.teams.some(t => t.sleeperRosterId)));
+      if (real.length) return real;
+    }
   } catch(e) {}
 
-  // Migration: convert old single-league data if it exists
+  // Migration: convert old single-league data if it exists and has real data
   const oldData = (() => { try { const x = localStorage.getItem('dynastyHQ_v5'); return x ? JSON.parse(x) : null; } catch(e){ return null; } })();
   const oldFbUrl = localStorage.getItem('dynastyHQ_fbUrl') || null;
   const oldTeamId = localStorage.getItem('dynastyHQ_myTeam') || null;
-  const base = emptyLeagueState();
-  const league = {
-    id: 'league_' + Date.now(),
-    name: 'My League',
-    fbUrl: oldFbUrl,
-    myTeamId: oldTeamId,
-    ...(oldData ? {
-      gmRankings:    oldData.gmRankings    || base.gmRankings,
-      gmAssessments: oldData.gmAssessments || base.gmAssessments,
-      settings:      oldData.settings      || base.settings,
-      teams:         oldData.teams         || base.teams,
-      myRankings:    oldData.myRankings    || base.myRankings,
-      myAssessment:  oldData.myAssessment  || base.myAssessment,
-    } : base),
-  };
-  return [league];
+  if (oldFbUrl || (oldData && oldData.teams && oldData.teams.some(t => t.sleeperRosterId))) {
+    const base = emptyLeagueState();
+    const league = {
+      id: 'league_' + Date.now(),
+      name: 'My League',
+      fbUrl: oldFbUrl,
+      myTeamId: oldTeamId,
+      ...(oldData ? {
+        gmRankings:    oldData.gmRankings    || base.gmRankings,
+        gmAssessments: oldData.gmAssessments || base.gmAssessments,
+        settings:      oldData.settings      || base.settings,
+        teams:         oldData.teams         || base.teams,
+        myRankings:    oldData.myRankings    || base.myRankings,
+        myAssessment:  oldData.myAssessment  || base.myAssessment,
+      } : base),
+    };
+    return [league];
+  }
+
+  return [];
 }
 
 function saveLeagues() {
@@ -732,7 +741,7 @@ function switchLeague(id) {
     gmRankings:    league.gmRankings    || {},
     gmAssessments: league.gmAssessments || {},
     settings:      league.settings      || {superflex:false},
-    teams:         league.teams         || JSON.parse(JSON.stringify(SAMPLE_TEAMS)),
+    teams:         league.teams         || [],
     myRankings:    league.myRankings    || {},
     myAssessment:  league.myAssessment  || {},
   };
@@ -763,7 +772,7 @@ let S = (() => {
     gmRankings:    l.gmRankings    || {},
     gmAssessments: l.gmAssessments || {},
     settings:      l.settings      || {superflex:false},
-    teams:         l.teams         || JSON.parse(JSON.stringify(SAMPLE_TEAMS)),
+    teams:         l.teams         || [],
     myRankings:    l.myRankings    || {},
     myAssessment:  l.myAssessment  || {},
   };
@@ -1126,7 +1135,7 @@ function getLevelRequirements(lvl) {
 
 // UI state (never persisted)
 let U = {
-  tab:'command', gmTeam:null, tradeTeam:null,
+  tab: LEAGUES.length === 0 ? 'import' : 'command', gmTeam:null, tradeTeam:null,
   modal:null, addForTeam:null,
   importStatus:null, importing:false, importProgress:'',
   showAddTeam:false, showFbSetup:false,
