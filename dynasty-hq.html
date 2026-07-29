@@ -7023,43 +7023,69 @@ function buildGmTradeBrief(my, allTeams, league) {
     }
   });
 
-  // ── Buy targets (undervalued players on other teams) ──────────────────────
-  const buyTargets = [];
-  if (FC_VALUES) {
-    others.forEach(t => {
-      const theirActive = (t.players||[]).filter(p=>p.slot==='active'||!p.slot).map(enrich);
-      theirActive.forEach(p => {
-        if (!p.value || p.value < 800) return;
-        const age = playerAgeProfile(p);
-        const trend = p.trend||0;
-        // Pre-prime ascending value — buy before market catches on
-        if (age.ageFlag==='pre-prime' && p.value > 1500) {
-          const myProf = teamPosProfile(my, p.pos, STARTS[p.pos]||2);
-          const lavg   = leagueAvgs[p.pos];
-          if (lavg && myProf.totalValue < lavg.avgTotal * 0.95)
-            buyTargets.push({ p, team:t, reason:'Pre-prime ascending — buy before market catches on', value:p.value });
-        }
-        // Rising trend
-        if (trend > 200 && p.value > 1200) {
-          if (!buyTargets.find(x=>x.p.id===p.id))
-            buyTargets.push({ p, team:t, reason:`Rising fast (+${Math.round(trend)} pts in 30d) — momentum buy`, value:p.value });
-        }
-        // Their position surplus = motivated seller
-        if (leagueAvgs[p.pos]) {
-          const tProf = teamPosProfile(t, p.pos, STARTS[p.pos]||2);
-          const sig   = posTradeSignal(tProf, leagueAvgs[p.pos], NORMS[p.pos]);
-          if (sig.sellerConf==='high' && p.value > 1000 && !buyTargets.find(x=>x.p.id===p.id))
-            buyTargets.push({ p, team:t, reason:`${t.name} has surplus ${p.pos} — motivated to sell`, value:p.value });
-        }
-      });
-    });
-  }
-  buyTargets.sort((a,b)=>b.value-a.value);
-
   // ── My biggest needs ───────────────────────────────────────────────────────
   const needs = POS4.filter(pos => (posDepth[pos]||{}).surplus < 0 ||
     (leagueAvgs[pos] && teamPosProfile(my,pos,STARTS[pos]).totalValue < leagueAvgs[pos].avgTotal*0.85)
   );
+
+  // ── Buy targets — scored by fit, not raw value ────────────────────────────
+  // Goal: surface players that fill MY gaps whose owner has a reason to move them.
+  // Explicitly avoid the top 2 players at each position league-wide (untouchable).
+  const buyTargets = [];
+  if (FC_VALUES) {
+    // Build league-wide position ranking to filter out untouchables
+    const leagueTopByPos = {};
+    POS4.forEach(pos => {
+      leagueTopByPos[pos] = others.concat([my])
+        .flatMap(t => (t.players||[]).filter(p=>p.slot==='active'||!p.slot).map(enrich))
+        .filter(p => p.pos === pos && p.value > 0)
+        .sort((a,b) => (b.value||0)-(a.value||0))
+        .map(p => p.id);
+    });
+
+    others.forEach(t => {
+      const theirActive = (t.players||[]).filter(p=>p.slot==='active'||!p.slot).map(enrich);
+      const tProfs = {};
+      POS4.forEach(pos => { if (leagueAvgs[pos]) tProfs[pos] = posTradeSignal(teamPosProfile(t, pos, STARTS[pos]||2), leagueAvgs[pos], NORMS[pos]); });
+
+      theirActive.forEach(p => {
+        if (!p.value || p.value < 800) return;
+        // Skip truly untouchable players (top 2 at their position in the entire league)
+        const posRank = (leagueTopByPos[p.pos]||[]).indexOf(p.id);
+        if (posRank !== -1 && posRank < 2) return;
+
+        const age    = playerAgeProfile(p);
+        const trend  = p.trend || 0;
+        const sig    = tProfs[p.pos];
+        const reasons = [];
+        let score = 0;
+
+        // +3: fills one of MY positional needs
+        if (needs.includes(p.pos)) { score += 3; reasons.push(`Fills your ${p.pos} need`); }
+
+        // +2: seller is motivated (their team has a surplus at this position)
+        if (sig?.sellerConf === 'high')   { score += 2; reasons.push(`${t.name} has surplus ${p.pos} — motivated seller`); }
+        else if (sig?.sellerConf === 'medium') { score += 1; reasons.push(`${t.name} may be open to moving a ${p.pos}`); }
+
+        // +2: trending down — market cooling, buy-low window
+        if (trend < -150) { score += 2; reasons.push(`Value declining (${Math.round(trend)} pts) — buy-low window`); }
+
+        // +1: pre-prime ascending — buy before market catches on
+        if (age.ageFlag === 'pre-prime' && trend >= 0) { score += 1; reasons.push('Pre-prime with rising value — buy before market catches on'); }
+
+        // +1: post-prime sell signal — owner may be ready to move on
+        if (age.ageFlag === 'post-prime' || age.ageFlag === 'veteran') { score += 1; reasons.push('Veteran value — owner may prefer youth in return'); }
+
+        // Must have at least one real reason to be surfaced
+        if (score < 2 || !reasons.length) return;
+        if (buyTargets.find(x => x.p.id === p.id)) return;
+
+        buyTargets.push({ p, team:t, reasons, score, value:p.value });
+      });
+    });
+  }
+  // Sort by fit score first, then value as tiebreaker — never raw value alone
+  buyTargets.sort((a,b) => b.score - a.score || b.value - a.value);
 
   return { sellCandidates: sellCandidates.slice(0,6), buyTargets: buyTargets.slice(0,6), needs };
 }
@@ -7106,7 +7132,7 @@ function gmTradeResponse(query, my, allTeams, league) {
     if (buyTargets.length) {
       lines.push(`Players worth targeting on the market:`);
       lines.push(`<ul style="margin:6px 0 0 0;padding-left:16px">${
-        buyTargets.slice(0,4).map(c=>`<li style="margin-bottom:4px">${fmtPlayer(c)} <span style="color:var(--muted)">(${esc(c.team.name)})</span> — ${esc(c.reason)}</li>`).join('')
+        buyTargets.slice(0,4).map(c=>`<li style="margin-bottom:4px">${fmtPlayer(c)} <span style="color:var(--muted)">(${esc(c.team.name)})</span> — ${esc((c.reasons||[c.reason]||[]).join(' · '))}</li>`).join('')
       }</ul>`);
     } else if (!FC_VALUES) {
       lines.push(`Load dynasty values first — I need market data to identify undervalued players.`);
@@ -7406,7 +7432,7 @@ function renderTradeFinderV2(my) {
       <span class="pb pb-${c.p.pos}" style="font-size:9px;flex-shrink:0">${c.p.pos}</span>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.p.name)} <span style="font-size:11px;font-weight:400;color:var(--muted)">(${esc(c.team.name)})</span></div>
-        <div style="font-size:11px;color:var(--muted);line-height:1.3">${esc(c.reason)}</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.3">${esc((c.reasons||[c.reason]||[]).join(' · '))}</div>
       </div>
       <div style="font-size:11px;color:#22c55e;white-space:nowrap;font-weight:600">${(c.value||0).toLocaleString()}</div>
     </div>`
@@ -7524,20 +7550,48 @@ function renderTradeFinderV2(my) {
         ` : ''}
         ${fairnessBar(r.fairness)}
         <div style="display:flex;gap:6px;margin-top:10px">
-          <button data-act="tfv2-load-analyzer" data-myids="${esc(offerSel.map(p=>p.id).join(','))}" data-theirids="${esc(r.ret.map(p=>p.id).join(','))}" data-tid="${esc(r.team.id)}"
-            style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);font-size:12px;cursor:pointer;color:var(--muted)">
-            Open in Analyzer →
-          </button>
-          <button data-act="load-trade-advisor"
+          <button data-act="tfv2-consult-staff"
             data-give-names="${esc(offerSel.map(p=>p.name).join(','))}"
             data-get-names="${esc(r.ret.map(p=>p.name).join(','))}"
             data-team-name="${esc(r.team.name)}"
             data-give-val="${offerSel.reduce((s,p)=>s+(p.value||0),0)}"
             data-get-val="${r.ret.reduce((s,p)=>s+(p.value||0),0)}"
-            style="flex:1;padding:6px;border-radius:6px;border:1px solid rgba(167,139,250,.35);background:rgba(167,139,250,.08);color:#c4b5fd;font-size:12px;font-weight:600;cursor:pointer">
-            💬 Trade Advisor →
+            style="flex:1;padding:6px;border-radius:6px;border:1px solid rgba(34,197,94,.35);background:rgba(34,197,94,.08);color:#86efac;font-size:12px;font-weight:600;cursor:pointer">
+            🤝 Consult Staff
+          </button>
+          <button data-act="tfv2-sweeten-toggle" data-tid="${esc(r.team.id)}"
+            data-gap="${r.ret.reduce((s,p)=>s+(p.value||0),0) - offerSel.reduce((s,p)=>s+(p.value||0),0)}"
+            data-offer-ids="${esc(offerSel.map(p=>p.id).join(','))}"
+            style="flex:1;padding:6px;border-radius:6px;border:1px solid ${U.sweetenTeam===r.team.id?'rgba(245,158,11,.5)':'var(--border)'};background:${U.sweetenTeam===r.team.id?'rgba(245,158,11,.1)':'var(--bg2)'};color:${U.sweetenTeam===r.team.id?'#f59e0b':'var(--muted)'};font-size:12px;font-weight:600;cursor:pointer">
+            ➕ Sweeten Offer
           </button>
         </div>
+        ${U.sweetenTeam === r.team.id ? (() => {
+          const gap = r.ret.reduce((s,p)=>s+(p.value||0),0) - offerSel.reduce((s,p)=>s+(p.value||0),0);
+          const offerIds = new Set(offerSel.map(p=>p.id));
+          const bench = (my.players||[]).filter(p=>!offerIds.has(p.id) && (p.value||0)>0).sort((a,b)=>(b.value||0)-(a.value||0));
+          const picks = [
+            { id:'pick_2027_3rd', name:'2027 3rd Round Pick', pos:'PICK', value: 900 },
+            { id:'pick_2027_4th', name:'2027 4th Round Pick', pos:'PICK', value: 450 },
+          ];
+          const suggestions = [...bench.slice(0,4), ...picks]
+            .filter(p=>!offerIds.has(p.id))
+            .sort((a,b) => Math.abs((b.value||0) - Math.max(gap,0)) - Math.abs((a.value||0) - Math.max(gap,0)))
+            .slice(0,3);
+          if (!suggestions.length) return '<div style="margin-top:8px;font-size:12px;color:var(--muted)">No additional assets found to sweeten the offer.</div>';
+          return `<div style="margin-top:10px;padding:10px;background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.2);border-radius:8px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#f59e0b;margin-bottom:8px">Add to your offer to sweeten the deal:</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              ${suggestions.map(p=>`
+                <button data-act="tfv2-sweeten-add" data-pid="${esc(p.id)}" data-name="${esc(p.name)}" data-pos="${esc(p.pos)}" data-value="${p.value||0}" data-age="${p.age||0}"
+                  style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);cursor:pointer;text-align:left">
+                  <span class="pb pb-${p.pos}" style="font-size:9px;flex-shrink:0">${p.pos}</span>
+                  <span style="flex:1;font-size:12px;font-weight:600;color:var(--text)">${esc(p.name)}</span>
+                  <span style="font-size:11px;color:#f59e0b;font-weight:600">${(p.value||0).toLocaleString()}</span>
+                </button>`).join('')}
+            </div>
+          </div>`;
+        })() : ''}
       </div>`).join('')
     : `<div style="padding:14px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-size:13px;color:var(--muted)">
         No strong trade destinations found for this package. The market may be thin — try adding a pick to sweeten the offer.
@@ -7581,8 +7635,8 @@ function renderTradeFinderV2(my) {
     <div style="display:flex;align-items:start;gap:12px;margin-bottom:12px;flex-wrap:wrap">
       <div style="flex:1;min-width:140px">
         <div style="font-size:11px;font-weight:700;color:#fca5a5;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">You send</div>
-        <div style="display:flex;flex-wrap:wrap;gap:2px">${rec.offer.map(p=>chip(p,'#ef4444')).join('') || '<span style="color:var(--muted);font-size:12px">No matching assets found</span>'}</div>
-        ${rec.offerVal?`<div style="font-size:11px;color:var(--muted);margin-top:4px">Total: ${rec.offerVal.toLocaleString()}</div>`:''}
+        <div style="display:flex;flex-wrap:wrap;gap:2px">${[...rec.offer,...(U.tfv2WantBonus||[])].map(p=>chip(p,'#ef4444')).join('') || '<span style="color:var(--muted);font-size:12px">No matching assets found</span>'}</div>
+        ${(rec.offerVal||(U.tfv2WantBonus||[]).reduce((s,p)=>s+(p.value||0),0))?`<div style="font-size:11px;color:var(--muted);margin-top:4px">Total: ${(rec.offerVal+(U.tfv2WantBonus||[]).reduce((s,p)=>s+(p.value||0),0)).toLocaleString()}</div>`:''}
       </div>
       <div style="display:flex;align-items:center;padding-top:20px;font-size:18px;color:var(--muted)">⇄</div>
       <div style="flex:1;min-width:140px">
@@ -7599,21 +7653,48 @@ function renderTradeFinderV2(my) {
     </div>
     ${rec.offer.length ? `
       <div style="display:flex;gap:6px;margin-top:10px">
-        <button data-act="tfv2-load-analyzer-want" data-tid="${esc(wtTeamId||'')}"
-          data-myids="${esc(rec.offer.map(p=>p.id).join(','))}" data-theirids="${esc(rec.wantSel.map(p=>p.id).join(','))}"
-          style="flex:1;padding:7px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);font-size:12px;cursor:pointer;color:var(--muted)">
-          Open in Analyzer →
-        </button>
-        <button data-act="load-trade-advisor"
+        <button data-act="tfv2-consult-staff"
           data-give-names="${esc(rec.offer.map(p=>p.name).join(','))}"
           data-get-names="${esc(rec.wantSel.map(p=>p.name).join(','))}"
           data-team-name="${esc(wtTeam ? wtTeam.name : '')}"
           data-give-val="${rec.offerVal||0}"
           data-get-val="${rec.targetVal||0}"
-          style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(167,139,250,.35);background:rgba(167,139,250,.08);color:#c4b5fd;font-size:12px;font-weight:600;cursor:pointer">
-          💬 Trade Advisor →
+          style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(34,197,94,.35);background:rgba(34,197,94,.08);color:#86efac;font-size:12px;font-weight:600;cursor:pointer">
+          🤝 Consult Staff
         </button>
-      </div>` : ''}
+        <button data-act="tfv2-sweeten-toggle" data-tid="want"
+          data-gap="${(rec.targetVal||0)-(rec.offerVal||0)}"
+          data-offer-ids="${esc(rec.offer.map(p=>p.id).join(','))}"
+          style="flex:1;padding:7px;border-radius:6px;border:1px solid ${U.sweetenTeam==='want'?'rgba(245,158,11,.5)':'var(--border)'};background:${U.sweetenTeam==='want'?'rgba(245,158,11,.1)':'var(--bg2)'};color:${U.sweetenTeam==='want'?'#f59e0b':'var(--muted)'};font-size:12px;font-weight:600;cursor:pointer">
+          ➕ Sweeten Offer
+        </button>
+      </div>
+      ${U.sweetenTeam === 'want' ? (() => {
+        const gap = (rec.targetVal||0) - (rec.offerVal||0);
+        const offerIds = new Set(rec.offer.map(p=>p.id));
+        const bench = (my.players||[]).filter(p=>!offerIds.has(p.id) && (p.value||0)>0).sort((a,b)=>(b.value||0)-(a.value||0));
+        const picks = [
+          { id:'pick_2027_3rd', name:'2027 3rd Round Pick', pos:'PICK', value: 900 },
+          { id:'pick_2027_4th', name:'2027 4th Round Pick', pos:'PICK', value: 450 },
+        ];
+        const suggestions = [...bench.slice(0,4), ...picks]
+          .filter(p=>!offerIds.has(p.id))
+          .sort((a,b) => Math.abs((b.value||0) - Math.max(gap,0)) - Math.abs((a.value||0) - Math.max(gap,0)))
+          .slice(0,3);
+        if (!suggestions.length) return '<div style="margin-top:8px;font-size:12px;color:var(--muted)">No additional assets available to sweeten the offer.</div>';
+        return `<div style="margin-top:10px;padding:10px;background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.2);border-radius:8px">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#f59e0b;margin-bottom:8px">Add to your offer to sweeten the deal:</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            ${suggestions.map(p=>`
+              <button data-act="tfv2-sweeten-add-want" data-pid="${esc(p.id)}" data-name="${esc(p.name)}" data-pos="${esc(p.pos)}" data-value="${p.value||0}" data-age="${p.age||0}"
+                style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);cursor:pointer;text-align:left">
+                <span class="pb pb-${p.pos}" style="font-size:9px;flex-shrink:0">${p.pos}</span>
+                <span style="flex:1;font-size:12px;font-weight:600;color:var(--text)">${esc(p.name)}</span>
+                <span style="font-size:11px;color:#f59e0b;font-weight:600">${(p.value||0).toLocaleString()}</span>
+              </button>`).join('')}
+          </div>
+        </div>`;
+      })() : ''}` : ''}
   </div>` : ''}`;
 }
 
@@ -9368,7 +9449,73 @@ document.addEventListener('click', e => {
       U.tfv2Offer = []; render(); break;
 
     case 'tfv2-want-clear':
-      U.tfv2Want = []; render(); break;
+      U.tfv2Want = []; U.tfv2WantBonus = []; U.sweetenTeam = null; render(); break;
+
+    case 'tfv2-consult-staff': {
+      const giveNames = (btn.dataset.giveNames || '').split(',').filter(Boolean);
+      const getNames  = (btn.dataset.getNames  || '').split(',').filter(Boolean);
+      const teamName  = btn.dataset.teamName   || '';
+      const giveVal   = parseFloat(btn.dataset.giveVal) || 0;
+      const getVal    = parseFloat(btn.dataset.getVal)  || 0;
+      const giveStr   = giveNames.join(', ') || 'my players';
+      const getStr    = getNames.join(', ')  || 'their players';
+      const teamClause = teamName ? ` The trade is with ${teamName}.` : '';
+      const ratio     = giveVal > 0 ? getVal / giveVal : 1;
+      if (ratio < 0.85) {
+        U.advisorGoal = `I want to send ${giveStr} and get ${getStr}.${teamClause} I'm offering more value than I'm getting back — help me frame this trade so their manager sees the upside for them.`;
+      } else if (ratio > 1.15) {
+        U.advisorGoal = `I want to send ${giveStr} and get ${getStr}.${teamClause} The value is in my favor — help me pitch this in a way that makes it compelling to them.`;
+      } else {
+        U.advisorGoal = `I want to send ${giveStr} and get ${getStr}.${teamClause} This is a fair deal for both sides — help me pitch it in the best possible way and anticipate their objections.`;
+      }
+      U.advisorOffer   = '';
+      U.advisorHistory = [];
+      U.tradeTab       = 'advisor';
+      render();
+      // Auto-fire the consultation
+      setTimeout(() => {
+        const userLabel = `<strong>Goal:</strong> ${esc(U.advisorGoal)}`;
+        U.advisorHistory = [{ side:'user', msg: userLabel }];
+        render();
+        if (CLAUDE_API_KEY) {
+          U.advisorThinking = true; render();
+          callClaudeAPI(buildTradeAdvisorSystemPrompt(), [{ role:'user', content: `Goal: ${U.advisorGoal}` }])
+            .then(reply => {
+              U.advisorThinking = false;
+              U.advisorHistory = [{ side:'user', msg: userLabel }, { side:'ai', msg: reply }];
+              render();
+            }).catch(() => {
+              U.advisorThinking = false;
+              U.advisorHistory = [{ side:'user', msg: userLabel }, { side:'ai', msg: generateNegotiationScript('', U.advisorGoal, S.teams) }];
+              render();
+            });
+        } else {
+          U.advisorHistory = [{ side:'user', msg: userLabel }, { side:'ai', msg: generateNegotiationScript('', U.advisorGoal, S.teams) }];
+          render();
+        }
+      }, 80);
+      break;
+    }
+
+    case 'tfv2-sweeten-toggle':
+      U.sweetenTeam = U.sweetenTeam === btn.dataset.tid ? null : btn.dataset.tid;
+      render(); break;
+
+    case 'tfv2-sweeten-add': {
+      const p = { id:btn.dataset.pid, name:btn.dataset.name, pos:btn.dataset.pos, value:parseInt(btn.dataset.value)||0, age:parseInt(btn.dataset.age)||0 };
+      const already = (U.tfv2Offer||[]).find(x=>x.id===p.id);
+      if (!already) U.tfv2Offer = [...(U.tfv2Offer||[]), p];
+      U.sweetenTeam = null;
+      render(); break;
+    }
+
+    case 'tfv2-sweeten-add-want': {
+      const p = { id:btn.dataset.pid, name:btn.dataset.name, pos:btn.dataset.pos, value:parseInt(btn.dataset.value)||0, age:parseInt(btn.dataset.age)||0 };
+      const already = (U.tfv2WantBonus||[]).find(x=>x.id===p.id);
+      if (!already) U.tfv2WantBonus = [...(U.tfv2WantBonus||[]), p];
+      U.sweetenTeam = null;
+      render(); break;
+    }
 
     case 'tfv2-load-analyzer': {
       const myIds    = (btn.dataset.myids||'').split(',').filter(Boolean);
