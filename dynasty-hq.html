@@ -798,6 +798,8 @@ let INTEL = {
   trending: [],     // raw Sleeper trending [{name, pos, team, addCount, dropCount}] — includes non-ECR players
   projections: {},  // { [player_id]: { ppr, half_ppr, std } }
   odds: [],         // raw odds objects from /api/odds
+  schedule: null,   // { teamOpponents: {abbr:{opp,home}}, dvp: {abbr:{passRank,rushRank}} }
+  scheduleLoading: false,
   ecrLoaded: false, ecrLoading: false, ecrError: null,
   projLoaded: false, projLoading: false, projError: null,
   oddsLoaded: false, oddsLoading: false, oddsError: null,
@@ -5733,6 +5735,17 @@ async function loadCoachMatchups() {
   render();
 }
 
+async function loadScheduleContext() {
+  if (INTEL.scheduleLoading) return;
+  INTEL.scheduleLoading = true;
+  try {
+    const res = await fetch('/api/schedule');
+    if (res.ok) INTEL.schedule = await res.json();
+  } catch(e) { /* silent — matchup cards degrade gracefully */ }
+  INTEL.scheduleLoading = false;
+  render();
+}
+
 // ── Live score auto-refresh ──────────────────────────────────────────────────
 let _liveRefreshTimer = null;
 
@@ -5968,6 +5981,47 @@ function renderCoachesOffice() {
   }
 
   // Single player row for My Team view
+  // ── Matchup context helpers ─────────────────────────────────────────────────
+  const sched     = INTEL.schedule || {};
+  const teamOpps  = sched.teamOpponents || {};
+  const dvpRanks  = sched.dvp || {};
+
+  function injuryBadge(status) {
+    if (!status) return '';
+    const cfg = { Q:['#fbbf24','QUES'], D:['#f97316','DOUBT'], O:['#f87171','OUT'], IR:['#f87171','IR'], COV:['#94a3b8','COV'] };
+    const [color, label] = cfg[status] || ['#94a3b8', status];
+    return `<span style="color:${color};font-size:9px;font-weight:800;letter-spacing:.04em;margin-right:3px">${label}</span>`;
+  }
+
+  // Build the "QB • BUF (#7) · Sun 1:00 PM @ HOU" line
+  function matchupLine(player, posLabel) {
+    const pos  = player.pos || posLabel || '';
+    const team = player.team || '';
+    const fc   = hasFCData ? (FC_VALUES[player.id]||{}) : {};
+    const rank = fc.rank || player.rank || null;
+    const rankStr = rank && rank < 500 ? ` (#${rank})` : '';
+
+    const info = teamOpps[team];
+    if (!info) {
+      return `<span style="font-size:10px;color:var(--muted)">${esc(pos)}${team?' • '+esc(team):''}${rankStr}</span>`;
+    }
+
+    const oppAbbr = info.opp;
+    const atStr   = info.home ? 'vs' : '@';
+    const isPass  = ['QB','WR','TE'].includes(pos);
+    const oppDvp  = dvpRanks[oppAbbr] || {};
+    const dvpRank = isPass ? oppDvp.passRank : oppDvp.rushRank;
+    let matchColor = '#94a3b8';
+    if (dvpRank) {
+      if (dvpRank >= 23)      matchColor = '#4ade80';
+      else if (dvpRank >= 12) matchColor = '#fbbf24';
+      else                    matchColor = '#f87171';
+    }
+    const gameStr = info.gameTime ? `${info.gameTime} ` : '';
+
+    return `<span style="font-size:10px;color:var(--muted)">${esc(pos)}${team?' • '+esc(team):''}${rankStr} · ${gameStr}<span style="color:${matchColor};font-weight:700">${atStr} ${esc(oppAbbr)}</span></span>`;
+  }
+
   function starterRow(label, player, pointsMap, isBench) {
     const pc = posColor[label] || '#64748b';
     if (!player) return `<div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);opacity:.35">
@@ -5978,40 +6032,26 @@ function renderCoachesOffice() {
     const fc    = hasFCData ? (FC_VALUES[player.id]||{}) : {};
     const rank  = fc.rank || player.rank || 500;
     const trend = fc.trend || 0;
-    const prof  = playerAgeProfile(player);
     const proj   = projLabel(player.id);
     const suffix = projSuffix(player.id);
     const live   = livePoints(player.id, pointsMap);
     const displayPts = live != null ? live : proj;
     const isLive = live != null;
 
-    const trendStr = trend > 150 ? ` <span style="color:#86efac;font-size:10px">↑</span>` :
-                     trend < -150 ? ` <span style="color:#fca5a5;font-size:10px">↓</span>` : '';
-    const ageDot   = prof.ageFlag==='veteran'   ? `<span style="color:#f59e0b;font-size:9px">★</span>` :
-                     prof.ageFlag==='pre-prime'  ? `<span style="color:#a78bfa;font-size:9px">◆</span>` :
-                     prof.ageFlag==='post-prime' ? `<span style="color:#fcd34d;font-size:9px">●</span>` : '';
+    const trendIcon = trend > 150 ? `<span style="color:#86efac;font-size:10px;margin-left:2px">↑</span>` :
+                      trend < -150 ? `<span style="color:#fca5a5;font-size:10px;margin-left:2px">↓</span>` : '';
 
-    const recParts = [];
-    if (rank <= 12)   recParts.push('elite producer');
-    if (trend > 200)  recParts.push('trending ↑');
-    if (trend < -200) recParts.push('value fading');
-    if (prof.ageFlag === 'veteran')   recParts.push('proven vet');
-    if (prof.ageFlag === 'pre-prime') recParts.push('young upside');
-    const recNote = recParts.join(' · ') || (isBench ? 'monitor for start opportunity' : 'start if healthy');
-
-    const initials = player.name.split(' ').map(w=>w[0]||'').slice(0,2).join('').toUpperCase();
-
-    return `<div style="display:flex;align-items:center;gap:10px;padding:${isBench?'10':'13'}px 16px;border-bottom:1px solid var(--border)">
-      <div style="width:36px;height:36px;border-radius:8px;background:${pc}${isBench?'10':'20'};border:${isBench?'1':'1.5'}px solid ${pc}${isBench?'44':'99'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:${pc};flex-shrink:0">${label}</div>
-      <div style="width:${isBench?'32':'38'}px;height:${isBench?'32':'38'}px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:${isBench?'11':'12'}px;font-weight:700;color:var(--muted);flex-shrink:0">${initials}</div>
+    return `<div style="display:flex;align-items:center;gap:10px;padding:${isBench?'9':'12'}px 16px;border-bottom:1px solid var(--border)">
+      <div style="width:${isBench?'30':'34'}px;height:${isBench?'30':'34'}px;border-radius:8px;background:${pc}${isBench?'10':'20'};border:${isBench?'1':'1.5'}px solid ${pc}${isBench?'44':'99'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:${pc};flex-shrink:0">${label}</div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:${isBench?'13':'14'}px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(player.name)}${trendStr} ${ageDot}${newsChip(player.name, player.id)}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:1px">${player.pos}${player.age?' · Age '+player.age:''}${player.team?' · <span style="font-weight:600;color:var(--text)">'+esc(player.team)+'</span>':''}</div>
-        ${!isBench?`<div style="font-size:10px;color:var(--muted);margin-top:2px;opacity:.8">${recNote}</div>`:''}
+        <div style="font-size:${isBench?'13':'14'}px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          ${injuryBadge(player.injuryStatus)}${esc(player.name)}${trendIcon}${newsChip(player.name, player.id)}
+        </div>
+        <div style="margin-top:2px">${matchupLine(player, label)}</div>
       </div>
       <div style="text-align:right;flex-shrink:0;min-width:42px">
         <div style="font-size:${isBench?'14':'18'}px;font-weight:800;color:${displayPts!=='—'?(isLive?'#86efac':'var(--text)'):'var(--muted)'}">${displayPts}</div>
-        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${isLive?'pts':suffix}</div>
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${isLive?'live':suffix}</div>
       </div>
     </div>`;
   }
@@ -6021,7 +6061,7 @@ function renderCoachesOffice() {
     const pc = posColor[label] || '#64748b';
 
     function side(player, ptsMap, isLeft) {
-      if (!player) return `<div style="flex:1;opacity:.3;text-align:${isLeft?'right':'left'}"><span style="font-size:12px;color:var(--muted)">—</span></div>`;
+      if (!player) return `<div style="flex:1;opacity:.25;text-align:${isLeft?'right':'left'};padding:4px 0"><span style="font-size:12px;color:var(--muted)">—</span></div>`;
       const parts = player.name.split(' ');
       const shortName = (parts[0]?.[0]||'') + '. ' + parts.slice(1).join(' ');
       const proj   = projLabel(player.id);
@@ -6029,17 +6069,24 @@ function renderCoachesOffice() {
       const live   = livePoints(player.id, ptsMap);
       const pts    = live != null ? live : proj;
       const isLive = live != null;
-      const fc    = hasFCData?(FC_VALUES[player.id]||{}):{};
-      const trend = fc.trend||0;
-      const trendStr = trend>150?'↑':trend<-150?'↓':'';
+      const fc     = hasFCData ? (FC_VALUES[player.id]||{}) : {};
+      const trend  = fc.trend || 0;
+      const trendIcon = trend > 150
+        ? `<span style="color:#86efac;font-size:9px"> ↑</span>`
+        : trend < -150 ? `<span style="color:#fca5a5;font-size:9px"> ↓</span>` : '';
 
-      const ptsDiv = `<div style="text-align:${isLeft?'right':'left'};flex-shrink:0;min-width:38px">
-        <div style="font-size:15px;font-weight:800;color:${pts!=='—'?(isLive?'#86efac':'var(--text)'):'var(--muted)'}">${pts}</div>
-        <div style="font-size:9px;color:var(--muted)">${isLive?'pts':sfx}</div>
+      const ptsDiv = `<div style="text-align:${isLeft?'right':'left'};flex-shrink:0;min-width:36px">
+        <div style="font-size:16px;font-weight:800;color:${pts!=='—'?(isLive?'#86efac':'var(--text)'):'var(--muted)'}">${pts}</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:1px">${isLive?'live':sfx}</div>
       </div>`;
+
       const nameDiv = `<div style="flex:1;min-width:0;text-align:${isLeft?'right':'left'}">
-        <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${isLeft?`${esc(shortName)} <span style="color:#94a3b8;font-size:10px">${trendStr}</span>`:`<span style="color:#94a3b8;font-size:10px">${trendStr}</span> ${esc(shortName)}`}</div>
-        <div style="font-size:10px;color:var(--muted)">${player.pos}${player.age?' · '+player.age:''}</div>
+        <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          ${isLeft
+            ? `${injuryBadge(player.injuryStatus)}${esc(shortName)}${trendIcon}`
+            : `${trendIcon}${injuryBadge(player.injuryStatus)}${esc(shortName)}`}
+        </div>
+        <div style="margin-top:2px">${matchupLine(player, label)}</div>
       </div>`;
 
       return isLeft
@@ -6047,9 +6094,9 @@ function renderCoachesOffice() {
         : `<div style="flex:1;display:flex;align-items:center;gap:8px;min-width:0">${nameDiv}${ptsDiv}</div>`;
     }
 
-    return `<div style="display:flex;align-items:center;gap:6px;padding:11px 12px;border-bottom:1px solid var(--border)">
+    return `<div style="display:flex;align-items:center;gap:6px;padding:10px 12px;border-bottom:1px solid var(--border)">
       ${side(myPlayer, myPtsMap, true)}
-      <div style="width:34px;height:34px;border-radius:8px;background:${pc}20;border:1.5px solid ${pc};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:${pc};flex-shrink:0">${label}</div>
+      <div style="width:32px;height:32px;border-radius:8px;background:${pc}20;border:1.5px solid ${pc};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:${pc};flex-shrink:0">${label}</div>
       ${side(oppPlayer, oppPtsMap, false)}
     </div>`;
   }
@@ -8960,6 +9007,7 @@ document.addEventListener('click', e => {
           const lg = _curLeague();
           if (lg?.sleeperLeagueId) loadCoachMatchups();
         }
+        if (mv === 'matchup' && !INTEL.schedule && !INTEL.scheduleLoading) loadScheduleContext();
       }
       render(); break;
 
@@ -9389,7 +9437,10 @@ document.addEventListener('click', e => {
         const lg = _curLeague();
         if (lg?.sleeperLeagueId) { trackActivity('lineupLoads'); loadCoachMatchups(); }
       }
-      if (v === 'matchup') startLiveRefresh();
+      if (v === 'matchup') {
+        startLiveRefresh();
+        if (!INTEL.schedule && !INTEL.scheduleLoading) loadScheduleContext();
+      }
       else stopLiveRefresh();
       render(); break;
     }
