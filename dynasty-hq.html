@@ -2642,7 +2642,9 @@ function generateGMBriefing(gm, scout, my, league) {
   const analyticsTone = trait && trait.toLowerCase().includes('analytic') || trait && trait.toLowerCase().includes('calculator');
 
   // ── NEED ────────────────────────────────────────────────────────────────────
-  let need = { icon:'🔴', label:'Biggest Need', headline:'Roster looks balanced', detail:'No glaring holes — but always room to upgrade depth.' };
+  let need = null;
+  if (!my) { /* no team selected — skip all insight cards */ }
+  else need = { icon:'🔴', label:'Biggest Need', headline:'Roster looks balanced', detail:'No glaring holes — but always room to upgrade depth.' };
   if (my && FC_VALUES && S.teams.length > 1) {
     let worstPos = null, worstPct = Infinity;
     for (const pos of positions) {
@@ -2682,7 +2684,7 @@ function generateGMBriefing(gm, scout, my, league) {
   }
 
   // ── STRENGTH ────────────────────────────────────────────────────────────────
-  let strength = { icon:'💪', label:'Biggest Strength', headline:'Evaluating your roster…', detail:'Analyzing position values across the league.' };
+  let strength = my ? { icon:'💪', label:'Biggest Strength', headline:'Evaluating your roster…', detail:'Analyzing position values across the league.' } : null;
   if (my && FC_VALUES) {
     let bestPos = null, bestPct = -Infinity;
     for (const pos of positions) {
@@ -2710,7 +2712,7 @@ function generateGMBriefing(gm, scout, my, league) {
   }
 
   // ── NEXT MOVE ────────────────────────────────────────────────────────────────
-  let nextMove = { icon:'➡️', label:'Recommended Next Move', headline:'Scout the market', detail:'Open the Market Scanner to find teams with what you need.' };
+  let nextMove = my ? { icon:'➡️', label:'Recommended Next Move', headline:'Scout the market', detail:'Open the Market Scanner to find teams with what you need.' } : null;
   if (my && FC_VALUES && S.teams.length > 1) {
     // Best opportunity: sell from strength into biggest need
     const needPos     = need.headline.match(/^([A-Z]+)\s/) ? need.headline.match(/^([A-Z]+)\s/)[1] : null;
@@ -2780,7 +2782,7 @@ function renderGMBriefingCard(my, league, scoutedTeams) {
   const briefing = generateGMBriefing(gm, scout, my, league);
   const { need, strength, nextMove, scoutNote } = briefing;
 
-  const briefItems = [need, strength, nextMove].map(item => `
+  const briefItems = [need, strength, nextMove].filter(Boolean).map(item => `
     <div style="padding:12px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">
         <span style="font-size:14px">${item.icon}</span>
