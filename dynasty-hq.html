@@ -6318,17 +6318,20 @@ function renderCoachesOffice() {
     ${myTaxi.map(p => rosterRow(p, 'TAXI', '#a78bfa')).join('')}
   </div>` : '';
 
-  // Auto-fire start/sit analysis once per matchup week load
+  // Auto-fire bench upgrade check once per matchup week load
   if (coachView === 'matchup' && matchup && hasProj) {
     const fireKey = `startSitFired_w${week}`;
     if (!U[fireKey]) {
       U[fireKey] = true;
       U.coachChatHistory = [];
-      setTimeout(() => sendAgentMessage(
-        'coach', null, 'coachChatHistory', 'coachChatThinking',
-        `Give me my complete Week ${week} start/sit breakdown. Go through every starter slot and every bench player — who's locked in, who's a close call, and who I should sit. Flag any injury news and tell me the 1-2 toughest decisions I need to make.`,
-        buildStartSitSystemPrompt()
-      ), 50);
+      const swap = findBestBenchUpgrade();
+      if (swap) {
+        const prompt = `Should I start ${swap.bench.name} (${swap.bench.pos}, proj ${swap.benchProj.toFixed(1)} pts) over ${swap.starter.name} (${swap.starter.pos}, proj ${swap.starterProj.toFixed(1)} pts) this week? Give me a direct recommendation and one sentence of reasoning.`;
+        setTimeout(() => sendAgentMessage(
+          'coach', null, 'coachChatHistory', 'coachChatThinking',
+          prompt, buildStartSitSystemPrompt()
+        ), 50);
+      }
     }
   }
 
@@ -11565,6 +11568,52 @@ Personality: You see things others miss. You think 2-3 years ahead. You protect 
   return personas[role] || personas.assistant;
 }
 
+// Returns the best bench-over-starter upgrade candidate, or null if none exists.
+function findBestBenchUpgrade() {
+  const my     = S.teams?.find(t => t.isMyTeam);
+  const league = _curLeague();
+  if (!my || !INTEL.projLoaded) return null;
+
+  function getProj(id) {
+    const rawId = String(id).replace('sl_','');
+    const p = (INTEL.projections||{})[rawId];
+    return (p && p.ppr > 0) ? p.ppr : null;
+  }
+
+  const rp = league?.leagueRules?.rosterPositions || [];
+  const { slots, bench } = buildLineup(my.players||[], rp);
+
+  // FLEX-eligible positions for swap matching
+  const flexPos = new Set(['RB','WR','TE']);
+
+  let bestGap = 0.5; // minimum projection gap to surface a swap
+  let best = null;
+
+  for (const benchPlayer of bench) {
+    const bProj = getProj(benchPlayer.id);
+    if (!bProj) continue;
+
+    for (const { label, player: starter } of slots) {
+      if (!starter) continue;
+      // Direct position match OR bench player can fill a FLEX slot
+      const posMatch = starter.pos === benchPlayer.pos;
+      const flexMatch = label === 'FLEX' && flexPos.has(benchPlayer.pos) && flexPos.has(starter.pos);
+      if (!posMatch && !flexMatch) continue;
+
+      const sProj = getProj(starter.id);
+      if (!sProj) continue;
+
+      const gap = bProj - sProj;
+      if (gap > bestGap) {
+        bestGap = gap;
+        best = { bench: benchPlayer, starter, benchProj: bProj, starterProj: sProj, label };
+      }
+    }
+  }
+
+  return best;
+}
+
 function buildStartSitSystemPrompt() {
   const base    = buildStaffSystemPrompt('coach');
   const my      = S.teams?.find(t => t.isMyTeam);
@@ -11627,29 +11676,38 @@ function buildStartSitSystemPrompt() {
 
   const { slots, bench } = buildLineupSimple(my.players||[]);
 
-  const starterLines = slots.map(({label, player}) => {
-    if (!player) return `  ${label}: [EMPTY]`;
-    const proj = getProj(player.id);
-    return `  ${label}: ${player.name} (${player.pos}, Age ${player.age||'?'}) — Proj: ${proj!=null?proj.toFixed(1)+'pts':'N/A'}${newsFor(player.name)}`;
-  }).join('\n');
+  const swap = findBestBenchUpgrade();
 
-  const benchLines = bench.map(p => {
-    const proj = getProj(p.id);
-    return `  ${p.name} (${p.pos}, Age ${p.age||'?'}) — Proj: ${proj!=null?proj.toFixed(1)+'pts':'N/A'}${newsFor(p.name)}`;
-  }).join('\n');
+  // Build context only for the two players in question
+  function playerContext(player) {
+    const proj = getProj(player.id);
+    const injury = player.injuryStatus ? ` | Status: ${player.injuryStatus}` : '';
+    const news = newsFor(player.name);
+    const sched = (INTEL.schedule?.teamOpponents || {})[player.team || ''];
+    const matchupStr = sched
+      ? ` | Game: ${sched.gameTime || ''} ${sched.home ? 'vs' : '@'} ${sched.opp}`
+      : '';
+    return `${player.name} (${player.pos}, ${player.team||'FA'}, Age ${player.age||'?'}) — Proj: ${proj!=null?proj.toFixed(1)+' pts':'N/A'}${injury}${matchupStr}${news}`;
+  }
+
+  if (!swap) {
+    return `${base}\n\n== WEEK ${week} ==\nOpponent: ${matchup.oppTeamName}\nNo clear bench upgrade detected. Answer any lineup questions directly.`;
+  }
 
   return `${base}
 
-== WEEK ${week} MATCHUP CONTEXT ==
+== WEEK ${week} LINEUP DECISION ==
 Opponent: ${matchup.oppTeamName}
 
-MY STARTERS:
-${starterLines}
+CURRENT STARTER:
+  ${playerContext(swap.starter)}
 
-MY BENCH:
-${benchLines || '  (none)'}
+BENCH CANDIDATE:
+  ${playerContext(swap.bench)}
 
-Your job: Give a clear, decisive Week ${week} start/sit breakdown. Go position-by-position through the roster. For each player, give one line: locked in, strong start, close call, or sit — and a brief reason. Flag any injury news. Highlight the 1-2 toughest lineup decisions. Be direct. No hedging.`;
+The bench player projects ${(swap.benchProj - swap.starterProj).toFixed(1)} pts higher this week.
+
+Your job: Give a direct START or SIT call — one sentence recommendation, one sentence of reasoning. Be decisive. No lists, no lengthy breakdown.`;
 }
 
 function buildTfv2GmSystemPrompt() {
