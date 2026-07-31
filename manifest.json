@@ -1,8 +1,8 @@
 {
-  "name": "Dynasty HQ",
-  "short_name": "DynHQ",
+  "name": "Dynasty Aid",
+  "short_name": "DynAid",
   "description": "Dynasty fantasy football scouting and trade intelligence",
-  "start_url": "/dynasty-hq.html",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

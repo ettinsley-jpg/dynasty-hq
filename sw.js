@@ -1,7 +1,7 @@
-// Dynasty HQ — Service Worker
+// Dynasty Aid — Service Worker
 // Caches the app shell for offline use. Sleeper API calls always go to network.
 
-const CACHE = 'dynasty-hq-v1';
+const CACHE = 'dynasty-aid-v2';
 const SHELL = [
   '/dynasty-hq.html',
   '/manifest.json',
