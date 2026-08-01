@@ -1,4 +1,7 @@
 {
+  "functions": {
+    "api/claude.js": { "maxDuration": 60 }
+  },
   "rewrites": [
     { "source": "/", "destination": "/dynasty-hq.html" },
     { "source": "/dynasty-hq", "destination": "/dynasty-hq.html" }
